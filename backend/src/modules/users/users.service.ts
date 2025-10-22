@@ -16,12 +16,12 @@ export class UsersService {
     return this.userRepo.findOne({ where: { id } });
   }
 
-  async createUser(email: string, password: string, displayName: string) {
+  async createUser(email: string, password: string, display_name: string) {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = this.userRepo.create({
       email,
       password: hashedPassword,
-      displayName,
+      display_name,
     });
     return this.userRepo.save(user);
   }

@@ -19,5 +19,3 @@ export class AIEntity {
   @CreateDateColumn()
   detectedAt: Date;
 }
-
-
