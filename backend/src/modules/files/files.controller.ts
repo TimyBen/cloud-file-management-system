@@ -13,6 +13,10 @@ export class FilesController {
   @Post('upload')
   async uploadFile(@Body() body: { filename: string; fileType: string }) {
     const fileBuffer = Buffer.from(''); // replace with real upload handling later
-    return this.filesService.uploadFile(fileBuffer, body.filename, body.fileType);
+    return this.filesService.uploadFile(
+      fileBuffer,
+      body.filename,
+      body.fileType,
+    );
   }
 }

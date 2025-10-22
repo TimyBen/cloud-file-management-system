@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DynamoDBClient, PutItemCommand, UpdateItemCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
+import {
+  DynamoDBClient,
+  PutItemCommand,
+  UpdateItemCommand,
+  DeleteItemCommand,
+} from '@aws-sdk/client-dynamodb';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -10,13 +15,14 @@ export class DynamoDBService {
   constructor(private config: ConfigService) {
     const region = this.config.get<string>('AWS_REGION') ?? 'us-east-1';
     const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID') || '';
-    const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY') || '';
+    const secretAccessKey =
+      this.config.get<string>('AWS_SECRET_ACCESS_KEY') || '';
 
     this.client = new DynamoDBClient({
       region,
       credentials: {
-        accessKeyId: accessKeyId as string,
-        secretAccessKey: secretAccessKey as string,
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
       },
     });
   }

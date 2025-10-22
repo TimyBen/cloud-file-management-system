@@ -11,7 +11,7 @@ export class User {
   id: string;
 
   @Column({ nullable: false })
-  displayName: string;
+  display_name: string;
 
   @Column({ unique: true })
   email: string;
@@ -20,16 +20,16 @@ export class User {
   role: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
   @Column({ default: false })
-  consentGiven: boolean;
+  consent_given: boolean;
 
   @Column({ nullable: true })
-  consentTimestamp: Date;
+  consent_timestamp: Date;
 
   @Column({ nullable: true })
-  deletedAt: Date;
+  deleted_at: Date;
 
   @Column({ nullable: false })
   password: string;
