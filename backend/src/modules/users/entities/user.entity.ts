@@ -3,34 +3,40 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { File } from '../../files/entities/file.entity';
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: false })
+  @Column({ name: 'display_name', nullable: false })
   display_name: string;
 
   @Column({ unique: true })
   email: string;
 
-  @Column({ default: 'user' })
-  role: string;
+  @Column()
+  password: string;
 
-  @CreateDateColumn()
+  @Column({ default: 'user' })
+  role: string; // global role: user | admin
+
+  @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 
-  @Column({ default: false })
+  @Column({ name: 'consent_given', default: false })
   consent_given: boolean;
 
-  @Column({ nullable: true })
+  @Column({ name: 'consent_timestamp', nullable: true })
   consent_timestamp: Date;
 
-  @Column({ nullable: true })
+  @Column({ name: 'deleted_at', nullable: true })
   deleted_at: Date;
 
-  @Column({ nullable: false })
-  password: string;
+  // Relationship: A user owns many files
+  @OneToMany(() => File, (file) => file.owner)
+  files: File[];
 }
