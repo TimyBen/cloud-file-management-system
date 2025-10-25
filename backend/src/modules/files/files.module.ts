@@ -1,13 +1,19 @@
+// src/modules/files/files.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { FilesService } from './files.service';
 import { FilesController } from './files.controller';
+import { FilesService } from './files.service';
 import { File } from './entities/file.entity';
-import { AwsS3Service } from './aws-s3.service';
+import { User } from '../users/entities/user.entity';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([File])],
+  imports: [
+    TypeOrmModule.forFeature([File, User]), // Make both repositories available
+    UsersModule, // Import users module to access its providers if needed
+  ],
   controllers: [FilesController],
-  providers: [FilesService, AwsS3Service],
+  providers: [FilesService],
+  exports: [FilesService],
 })
 export class FilesModule {}

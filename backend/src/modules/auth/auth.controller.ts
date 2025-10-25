@@ -47,9 +47,9 @@ export class AuthController {
 
   // ---------------- LOGOUT ----------------
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
-  async logout() {
-    // Optional: handle token blacklisting if you want later
-    return { message: 'Logged out successfully' };
+  @UseGuards(JwtAuthGuard)
+  async logout(@Req() req) {
+    const userId = req.user.sub;
+    return this.authService.logout(userId);
   }
 }

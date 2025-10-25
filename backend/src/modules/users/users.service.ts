@@ -6,6 +6,7 @@ import { User } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
+  softDelete: any;
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
@@ -35,6 +36,10 @@ export class UsersService {
     return users.map(({ password, ...user }) => user); // remove passwords
   }
 
+  async findByEmail(email: string) {
+    return await this.userRepo.findOne({ where: { email } });
+  }
+
   // Get single user by ID
   async findOne(id: string) {
     const user = await this.userRepo.findOne({ where: { id } });
@@ -43,13 +48,15 @@ export class UsersService {
     return safeUser;
   }
 
-  // Update user details
-  async update(id: string, updates: Partial<User>) {
-    const user = await this.findOne(id);
-    Object.assign(user, updates);
-    const updated = await this.userRepo.save(user);
-    const { password, ...safeUser } = updated;
-    return safeUser;
+  async update(id: string, data: Partial<User>) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new Error('User not found');
+
+    Object.assign(user, data);
+    await this.userRepo.save(user);
+
+    if ('password' in user) delete (user as any).password;
+    return user;
   }
 
   // Delete (soft delete)
@@ -60,5 +67,15 @@ export class UsersService {
     await this.userRepo.save(user);
     const { password, ...safeUser } = user;
     return safeUser;
+  }
+
+  async softDeleteUser(id: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    user.deleted_at = new Date(); // soft delete timestamp
+    await this.userRepo.save(user);
+
+    return { message: `User ${user.email} marked as deleted` };
   }
 }
