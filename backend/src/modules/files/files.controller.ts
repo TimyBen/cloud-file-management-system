@@ -131,4 +131,15 @@ export class FilesController {
     if (!userId) throw new UnauthorizedException('User not found');
     return await this.filesService.deleteFile(id, userId);
   }
+
+  @Delete('delete/multiple')
+  @UseGuards(JwtAuthGuard)
+  async deleteMultipleFiles(
+    @Req() req: any,
+    @Body() body: { fileIds: string[] },
+  ) {
+    const userId = req.user?.sub;
+    if (!userId) throw new UnauthorizedException('User not found');
+    return await this.filesService.deleteMultipleFiles(body.fileIds, userId);
+  }
 }
