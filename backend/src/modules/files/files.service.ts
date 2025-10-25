@@ -234,14 +234,14 @@ export class FilesService {
   }
 
   /**
-   * ✅ Delete multiple files (S3 + DB)
+   * Delete multiple files (S3 + DB)
    */
   async deleteMultipleFiles(fileIds: string[], userId: string) {
     if (!fileIds || fileIds.length === 0) {
       throw new Error('No file IDs provided');
     }
 
-    // ✅ Use In() for multiple IDs
+    // Use In() for multiple IDs
     const files = await this.fileRepo.find({
       where: { owner_id: userId, id: In(fileIds) },
     });
@@ -250,7 +250,7 @@ export class FilesService {
       throw new NotFoundException('No matching files found for deletion');
     }
 
-    // ✅ Explicitly type deleteResults
+    // Explicitly type deleteResults
     const deleteResults: {
       file_id: string;
       filename: string;
