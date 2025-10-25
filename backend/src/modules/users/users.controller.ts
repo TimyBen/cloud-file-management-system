@@ -19,7 +19,7 @@ import { Req } from '@nestjs/common';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // ✅ Get all users (Admin only)
+  //Get all users (Admin only)
   @Get()
   @Roles('admin')
   async findAll() {
