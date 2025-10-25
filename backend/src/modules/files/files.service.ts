@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { File } from './entities/file.entity';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -231,5 +231,68 @@ export class FilesService {
       console.error('Delete Error:', err);
       throw new InternalServerErrorException('Failed to delete file');
     }
+  }
+
+  /**
+   * ✅ Delete multiple files (S3 + DB)
+   */
+  async deleteMultipleFiles(fileIds: string[], userId: string) {
+    if (!fileIds || fileIds.length === 0) {
+      throw new Error('No file IDs provided');
+    }
+
+    // ✅ Use In() for multiple IDs
+    const files = await this.fileRepo.find({
+      where: { owner_id: userId, id: In(fileIds) },
+    });
+
+    if (files.length === 0) {
+      throw new NotFoundException('No matching files found for deletion');
+    }
+
+    // ✅ Explicitly type deleteResults
+    const deleteResults: {
+      file_id: string;
+      filename: string;
+      status: 'deleted' | 'error';
+      error?: string;
+    }[] = [];
+
+    // ⚙️ Delete each file
+    for (const file of files) {
+      try {
+        // 🧹 Delete from S3
+        await this.s3.send(
+          new DeleteObjectCommand({
+            Bucket: this.bucketName,
+            Key: file.storage_path,
+          }),
+        );
+
+        // 🗑️ Soft delete in DB
+        file.is_deleted = true;
+        file.deleted_at = new Date();
+        await this.fileRepo.save(file);
+
+        deleteResults.push({
+          file_id: file.id,
+          filename: file.filename,
+          status: 'deleted',
+        });
+      } catch (err) {
+        console.error(`❌ Error deleting ${file.filename}:`, err);
+        deleteResults.push({
+          file_id: file.id,
+          filename: file.filename,
+          status: 'error',
+          error: err.message,
+        });
+      }
+    }
+
+    return {
+      message: `${deleteResults.length} file(s) processed`,
+      results: deleteResults,
+    };
   }
 }
