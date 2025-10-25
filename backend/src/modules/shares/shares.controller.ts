@@ -22,7 +22,7 @@ export class SharesController {
   constructor(private readonly sharesService: SharesService) {}
 
   /**
-   * 📤 Share a file with another user
+   * Share a file with another user
    */
   @Post()
   @Roles('admin', 'user')
@@ -32,13 +32,13 @@ export class SharesController {
     body: {
       fileId: string;
       sharedWithUserId: string;
-      permission: 'read' | 'write' | 'comment'; // ✅ Restrict at type-level
+      permission: 'read' | 'write' | 'comment'; // Restrict at type-level
     },
   ) {
     const sharedByUserId = req.user?.sub;
     if (!sharedByUserId) throw new UnauthorizedException('User not found');
 
-    // ✅ Validate input before passing it along
+    // Validate input before passing it along
     const validPermissions: ('read' | 'write' | 'comment')[] = [
       'read',
       'write',
@@ -54,11 +54,11 @@ export class SharesController {
       body.fileId,
       sharedByUserId,
       body.sharedWithUserId,
-      body.permission, // ✅ Now TypeScript-safe
+      body.permission, // Now TypeScript-safe
     );
   }
   /**
-   * 📋 List all shares for a file
+   * List all shares for a file
    */
   @Get(':fileId')
   async listShares(@Param('fileId') fileId: string) {
@@ -87,7 +87,7 @@ export class SharesController {
   }
 
   /**
-   * 🚫 Revoke a share
+   * Revoke a share
    */
   @Patch(':id/revoke')
   @Delete(':id/revoke')

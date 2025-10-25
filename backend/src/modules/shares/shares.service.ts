@@ -33,19 +33,19 @@ export class SharesService {
     if (file.owner_id !== sharedByUserId)
       throw new ForbiddenException('You can only share your own files');
 
-    // 🔁 Map permission to context role
+    // Map permission to context role
     const contextRole =
       permission === 'write' || permission === 'comment'
         ? 'collaborator'
         : 'viewer';
 
-    // 🔍 Check if this file is already shared with this user
+    // Check if this file is already shared with this user
     const existingShare = await this.shareRepo.findOne({
       where: { file_id: fileId, shared_with_user_id: sharedWithUserId },
     });
 
     if (existingShare) {
-      // ✅ If share exists → update it instead of creating duplicate
+      // If share exists → update it instead of creating duplicate
       existingShare.permission = permission;
       existingShare.context_role = contextRole;
       existingShare.is_active = true;
@@ -59,7 +59,7 @@ export class SharesService {
       };
     }
 
-    // 🆕 Create new share if not existing
+    // Create new share if not existing
     const newShare = this.shareRepo.create({
       file_id: fileId,
       shared_by_user_id: sharedByUserId,
@@ -98,7 +98,7 @@ export class SharesService {
     const share = await this.shareRepo.findOne({ where: { id: shareId } });
     if (!share) throw new NotFoundException('Share record not found');
 
-    // ✅ Only file owner or admin can update
+    // Only file owner or admin can update
     const file = await this.fileRepo.findOne({
       where: { id: share.file_id },
     });
@@ -107,7 +107,7 @@ export class SharesService {
     if (file.owner_id !== userId)
       throw new UnauthorizedException('Only file owner can update shares');
 
-    // ✅ Update permission → context role
+    // Update permission → context role
     const contextRole =
       permission === 'write' || permission === 'comment'
         ? 'collaborator'
@@ -132,7 +132,7 @@ export class SharesService {
     const share = await this.shareRepo.findOne({ where: { id: shareId } });
     if (!share) throw new NotFoundException('Share record not found');
 
-    // ✅ Verify ownership or admin role
+    // Verify ownership or admin role
     const file = await this.fileRepo.findOne({ where: { id: share.file_id } });
     if (!file) throw new NotFoundException('File not found');
     if (file.owner_id !== userId)
