@@ -2,9 +2,9 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  CreateDateColumn,
   ManyToOne,
   JoinColumn,
-  CreateDateColumn,
 } from 'typeorm';
 import { File } from '../../files/entities/file.entity';
 import { User } from '../../users/entities/user.entity';
@@ -25,6 +25,9 @@ export class FileShare {
 
   @Column({ type: 'varchar', length: 20 })
   permission: string; // read | write | comment
+
+  @Column({ type: 'varchar', length: 20, default: 'viewer' })
+  context_role: string; // owner | collaborator | viewer
 
   @CreateDateColumn()
   shared_at: Date;

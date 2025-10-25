@@ -1,19 +1,17 @@
-// src/modules/files/files.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FilesController } from './files.controller';
 import { FilesService } from './files.service';
 import { File } from './entities/file.entity';
-import { User } from '../users/entities/user.entity';
-import { UsersModule } from '../users/users.module';
+import { FileShare } from '../shares/entities/share.entity'; // ✅ ADD THIS
+import { ContextRoleGuard } from '../../common/guards/context-role.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([File, User]), // Make both repositories available
-    UsersModule, // Import users module to access its providers if needed
+    TypeOrmModule.forFeature([File, FileShare]), // ✅ Add FileShare here
   ],
   controllers: [FilesController],
-  providers: [FilesService],
+  providers: [FilesService, ContextRoleGuard],
   exports: [FilesService],
 })
 export class FilesModule {}
