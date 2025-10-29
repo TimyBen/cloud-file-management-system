@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
@@ -6,6 +10,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { LogsService } from '../logs/logs.service';
+import { LogAction } from '../logs/logs.service';
 
 @Injectable()
 export class AuthService {
@@ -15,12 +21,17 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly jwtService: JwtService,
+    private readonly logsService: LogsService, // ✅ Inject LogsService
   ) {}
 
-  // REGISTER
+  /**
+   * 🧾 REGISTER
+   */
   async register(data: RegisterDto) {
-    const existing = await this.userRepo.findOne({ where: { email: data.email } });
-    if (existing) throw new UnauthorizedException('Email already registered');
+    const existing = await this.userRepo.findOne({
+      where: { email: data.email },
+    });
+    if (existing) throw new ConflictException('Email already registered');
 
     const hashed = await bcrypt.hash(data.password, 10);
     const user = this.userRepo.create({
@@ -34,10 +45,18 @@ export class AuthService {
     const tokens = await this.getTokens(user.id, user.email, user.role);
 
     delete (user as any).password;
-    return { user, ...tokens };
+
+    // ✅ Log registration
+    await this.logsService.logAction(user.id, LogAction.REGISTER, {
+      details: { email: user.email, role: user.role },
+    });
+
+    return { message: 'Registration successful', user, ...tokens };
   }
 
-  // LOGIN
+  /**
+   * 🔐 LOGIN
+   */
   async login(data: LoginDto) {
     const user = await this.userRepo.findOne({ where: { email: data.email } });
     if (!user || !(await bcrypt.compare(data.password, user.password))) {
@@ -46,53 +65,91 @@ export class AuthService {
 
     const tokens = await this.getTokens(user.id, user.email, user.role);
     delete (user as any).password;
-    return { user, ...tokens };
+
+    // ✅ Log login
+    await this.logsService.logAction(user.id, LogAction.LOGIN, {
+      details: { email: user.email, role: user.role },
+    });
+
+    return { message: 'Login successful', user, ...tokens };
   }
 
-  // LOGOUT
-  async logout(userId: string) {
-    // just store the user ID or token hash in a temporary blacklist
-    this.tokenBlacklist.add(userId);
+  /**
+   * 🚪 LOGOUT
+   */
+  async logout(userId: string, token?: string) {
+    if (token) {
+      this.tokenBlacklist.add(token);
+    } else {
+      this.tokenBlacklist.add(userId);
+    }
+
+    // ✅ Log logout
+    await this.logsService.logAction(userId, LogAction.LOGOUT);
+
     return { message: 'Logout successful' };
   }
 
-  // REFRESH
+  /**
+   * ♻️ REFRESH TOKEN
+   */
   async refreshToken(token: string) {
     try {
       const decoded = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
+      if (this.tokenBlacklist.has(token)) {
+        throw new UnauthorizedException('Token revoked');
+      }
+
       const user = await this.userRepo.findOne({ where: { id: decoded.sub } });
       if (!user) throw new UnauthorizedException('User not found');
 
       const tokens = await this.getTokens(user.id, user.email, user.role);
       delete (user as any).password;
-      return { user, ...tokens };
+
+      // ✅ Log token refresh
+      await this.logsService.logAction(user.id, LogAction.REFRESH_TOKEN);
+
+      return { message: 'Token refreshed', user, ...tokens };
     } catch {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
 
-  // TOKEN GENERATION
+  /**
+   * 🔑 TOKEN GENERATION
+   */
   async getTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
+
     const access_token = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
       secret: process.env.JWT_SECRET,
     });
+
     const refresh_token = await this.jwtService.signAsync(payload, {
       expiresIn: '7d',
       secret: process.env.JWT_REFRESH_SECRET,
     });
+
     return { access_token, refresh_token };
   }
 
-  // PROFILE
+  /**
+   * 👤 PROFILE
+   */
   async getProfile(userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('User not found');
     delete (user as any).password;
+
+    // ✅ Log profile view
+    await this.logsService.logAction(user.id, LogAction.USER_UPDATE, {
+      details: { viewedProfile: true },
+    });
+
     return user;
   }
 }

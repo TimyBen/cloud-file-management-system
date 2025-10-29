@@ -3,15 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FilesController } from './files.controller';
 import { FilesService } from './files.service';
 import { File } from './entities/file.entity';
-import { FileShare } from '../shares/entities/share.entity'; // ✅ ADD THIS
-import { ContextRoleGuard } from '../../common/guards/context-role.guard';
+import { SharesModule } from '../shares/shares.module';
+import { LogsModule } from '../logs/logs.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([File, FileShare]), // ✅ Add FileShare here
-  ],
+  imports: [TypeOrmModule.forFeature([File]), SharesModule, LogsModule],
   controllers: [FilesController],
-  providers: [FilesService, ContextRoleGuard],
+  providers: [FilesService],
   exports: [FilesService],
 })
 export class FilesModule {}

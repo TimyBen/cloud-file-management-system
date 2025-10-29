@@ -1,15 +1,14 @@
 import {
   Controller,
   Post,
-  Get,
   Patch,
-  Param,
-  Body,
-  UseGuards,
-  Req,
-  UnauthorizedException,
-  BadRequestException,
   Delete,
+  Get,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { SharesService } from './shares.service';
 import { JwtAuthGuard } from '../auth/strategies/jwt.guard';
@@ -21,81 +20,77 @@ import { Roles } from '../../common/decorators/roles.decorator';
 export class SharesController {
   constructor(private readonly sharesService: SharesService) {}
 
-  /**
-   * Share a file with another user
-   */
   @Post()
   @Roles('admin', 'user')
-  async shareFile(
+  async createShare(
     @Req() req: any,
     @Body()
     body: {
       fileId: string;
       sharedWithUserId: string;
-      permission: 'read' | 'write' | 'comment'; // Restrict at type-level
+      permission: 'read' | 'write' | 'comment';
     },
   ) {
-    const sharedByUserId = req.user?.sub;
-    if (!sharedByUserId) throw new UnauthorizedException('User not found');
-
-    // Validate input before passing it along
-    const validPermissions: ('read' | 'write' | 'comment')[] = [
-      'read',
-      'write',
-      'comment',
-    ];
-    if (!validPermissions.includes(body.permission)) {
-      throw new BadRequestException(
-        `Invalid permission. Allowed: ${validPermissions.join(', ')}`,
-      );
-    }
+    const userId = req.user?.sub;
+    if (!userId) throw new UnauthorizedException('User not found');
 
     return await this.sharesService.shareFile(
       body.fileId,
-      sharedByUserId,
+      userId,
       body.sharedWithUserId,
-      body.permission, // Now TypeScript-safe
+      body.permission,
     );
   }
-  /**
-   * List all shares for a file
-   */
+
   @Get(':fileId')
   async listShares(@Param('fileId') fileId: string) {
-    return await this.sharesService.listFileShares(fileId);
+    return await this.sharesService.listSharesForFile(fileId);
   }
 
-  /**
-   * ✏️ Update share permission
-   */
-  @Patch(':id')
-  @Roles('admin', 'user')
+  @Patch(':shareId')
   async updateShare(
-    @Param('id') id: string,
-    @Body() body: { permission: 'read' | 'write' | 'comment' },
+    @Param('shareId') shareId: string,
     @Req() req: any,
+    @Body() updates: Partial<any>,
   ) {
     const userId = req.user?.sub;
     if (!userId) throw new UnauthorizedException('User not found');
-
-    const valid = ['read', 'write', 'comment'];
-    if (!valid.includes(body.permission)) {
-      throw new BadRequestException('Invalid permission');
-    }
-
-    return await this.sharesService.updateShare(id, userId, body.permission);
+    return await this.sharesService.updateShare(shareId, updates, userId);
   }
 
-  /**
-   * Revoke a share
-   */
-  @Patch(':id/revoke')
-  @Delete(':id/revoke')
-  @Roles('admin', 'user')
-  async revokeShare(@Param('id') id: string, @Req() req: any) {
+  @Delete(':shareId/revoke')
+  async revokeShare(@Param('shareId') shareId: string, @Req() req: any) {
     const userId = req.user?.sub;
     if (!userId) throw new UnauthorizedException('User not found');
+    return await this.sharesService.revokeShare(shareId, userId);
+  }
 
-    return await this.sharesService.revokeShare(id, userId);
+  @Post(':fileId/collaborators')
+  async addCollaborator(
+    @Param('fileId') fileId: string,
+    @Req() req: any,
+    @Body('collaboratorId') collaboratorId: string,
+  ) {
+    const userId = req.user?.sub;
+    if (!userId) throw new UnauthorizedException('User not found');
+    return await this.sharesService.addCollaborator(fileId, userId, collaboratorId);
+  }
+
+  @Delete(':shareId/collaborators')
+  async removeCollaborator(@Param('shareId') shareId: string, @Req() req: any) {
+    const userId = req.user?.sub;
+    if (!userId) throw new UnauthorizedException('User not found');
+    return await this.sharesService.removeCollaborator(shareId, userId);
+  }
+
+  @Post(':fileId/comment')
+  async commentOnFile(
+    @Param('fileId') fileId: string,
+    @Req() req: any,
+    @Body('comment') comment: string,
+  ) {
+    const userId = req.user?.sub;
+    if (!userId) throw new UnauthorizedException('User not found');
+    return await this.sharesService.commentOnFile(fileId, userId, comment);
   }
 }
