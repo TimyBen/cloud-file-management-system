@@ -16,6 +16,7 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { LogsService, LogAction } from '../logs/logs.service';
 
 @Injectable()
 export class FilesService {
@@ -26,6 +27,7 @@ export class FilesService {
     @InjectRepository(File)
     private readonly fileRepo: Repository<File>,
     private readonly configService: ConfigService,
+    private readonly logsService: LogsService, // ✅ integrated logger
   ) {
     const region = this.configService.get<string>('AWS_REGION');
     const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
@@ -39,7 +41,6 @@ export class FilesService {
     }
 
     this.bucketName = bucket;
-
     this.s3 = new S3Client({
       region,
       credentials: { accessKeyId, secretAccessKey },
@@ -47,7 +48,7 @@ export class FilesService {
   }
 
   /**
-   * Upload a single file to S3 (with version handling)
+   * Upload a single file (handles versioning + logs)
    */
   async uploadFile(
     buffer: Buffer,
@@ -68,7 +69,7 @@ export class FilesService {
     }
 
     let filename = originalName;
-    let previousVersionId: string | undefined = undefined;
+    let previousVersionId: string | undefined;
 
     if (existingFile && mode === 'duplicate') {
       const ext = originalName.split('.').pop();
@@ -106,6 +107,16 @@ export class FilesService {
 
       await this.fileRepo.save(file);
 
+      // ✅ Log upload action
+      await this.logsService.logAction(userId, LogAction.UPLOAD, {
+        fileId: file.id,
+        details: {
+          filename: file.filename,
+          size: file.file_size,
+          version: file.version_id,
+        },
+      });
+
       return {
         message: existingFile
           ? 'File updated successfully'
@@ -119,10 +130,11 @@ export class FilesService {
   }
 
   /**
-   * Upload multiple files
+   * Upload multiple files (logs each)
    */
   async uploadMultipleFiles(files: Express.Multer.File[], userId: string) {
-    const results: { message: string; file: File }[] = []; // Explicit type annotation
+    const results: { message: string; file: File }[] = [];
+
     for (const file of files) {
       const result = await this.uploadFile(
         file.buffer,
@@ -130,23 +142,34 @@ export class FilesService {
         file.mimetype,
         userId,
       );
-      results.push(result); // No error now
+      results.push(result);
     }
+
+    await this.logsService.logAction(userId, LogAction.UPLOAD, {
+      details: { count: results.length },
+    });
+
     return { message: 'All files uploaded successfully', files: results };
   }
 
   /**
-   * Fetch all files owned by a user
+   * Get all files for user + log access
    */
   async findUserFiles(userId: string) {
-    return await this.fileRepo.find({
+    const files = await this.fileRepo.find({
       where: { owner_id: userId, is_deleted: false },
       order: { upload_date: 'DESC' },
     });
+
+    await this.logsService.logAction(userId, LogAction.UPDATE, {
+      details: { accessedFiles: files.length },
+    });
+
+    return files;
   }
 
   /**
-   * Get a single file by ID
+   * Get file by ID
    */
   async getFileById(id: string) {
     const file = await this.fileRepo.findOne({ where: { id } });
@@ -155,7 +178,7 @@ export class FilesService {
   }
 
   /**
-   * Generate a download URL (signed)
+   * Generate a signed download URL + log download
    */
   async downloadFile(id: string) {
     const file = await this.fileRepo.findOne({ where: { id } });
@@ -166,18 +189,30 @@ export class FilesService {
       Key: file.storage_path,
     });
 
-    const url = await getSignedUrl(this.s3, command, { expiresIn: 3600 }); // 1 hour
+    const url = await getSignedUrl(this.s3, command, { expiresIn: 3600 });
+
+    await this.logsService.logAction(file.owner_id, LogAction.DOWNLOAD, {
+      fileId: file.id,
+      download: true,
+      details: { filename: file.filename },
+    });
+
     return { downloadUrl: url, filename: file.filename };
   }
 
   /**
-   * Share file (for future implementation)
+   * Share file + log share event
    */
   async shareFile(id: string, sharedWith: string[]) {
     const file = await this.fileRepo.findOne({ where: { id } });
     if (!file) throw new NotFoundException('File not found');
 
-    // You could create entries in a file_shares table here
+    await this.logsService.logAction(file.owner_id, LogAction.SHARE, {
+      fileId: file.id,
+      permissionChange: true,
+      details: { sharedWith },
+    });
+
     return {
       message: `File shared with ${sharedWith.length} user(s)`,
       fileId: id,
@@ -195,18 +230,27 @@ export class FilesService {
     const file = await this.fileRepo.findOne({
       where: { id, owner_id: userId },
     });
+
     if (!file) throw new ForbiddenException('File not found or unauthorized');
+
+    const before = { ...file };
 
     if (updates.filename) file.filename = updates.filename;
     if (typeof updates.is_deleted === 'boolean')
       file.is_deleted = updates.is_deleted;
 
     await this.fileRepo.save(file);
+
+    await this.logsService.logAction(userId, LogAction.UPDATE, {
+      fileId: file.id,
+      details: { before, after: file },
+    });
+
     return { message: 'File updated', file };
   }
 
   /**
-   * Delete a file (S3 + DB)
+   * Delete file (S3 + DB + log)
    */
   async deleteFile(id: string, userId: string) {
     const file = await this.fileRepo.findOne({
@@ -226,6 +270,11 @@ export class FilesService {
       file.deleted_at = new Date();
       await this.fileRepo.save(file);
 
+      await this.logsService.logAction(userId, LogAction.DELETE, {
+        fileId: file.id,
+        details: { filename: file.filename },
+      });
+
       return { message: 'File deleted successfully', file };
     } catch (err) {
       console.error('Delete Error:', err);
@@ -234,34 +283,27 @@ export class FilesService {
   }
 
   /**
-   * Delete multiple files (S3 + DB)
+   * Delete multiple files
    */
   async deleteMultipleFiles(fileIds: string[], userId: string) {
-    if (!fileIds || fileIds.length === 0) {
-      throw new Error('No file IDs provided');
-    }
+    if (!fileIds?.length) throw new Error('No file IDs provided');
 
-    // Use In() for multiple IDs
     const files = await this.fileRepo.find({
       where: { owner_id: userId, id: In(fileIds) },
     });
 
-    if (files.length === 0) {
+    if (files.length === 0)
       throw new NotFoundException('No matching files found for deletion');
-    }
 
-    // Explicitly type deleteResults
-    const deleteResults: {
+    const deleteResults: Array<{
       file_id: string;
       filename: string;
       status: 'deleted' | 'error';
       error?: string;
-    }[] = [];
+    }> = [];
 
-    // ⚙️ Delete each file
     for (const file of files) {
       try {
-        // 🧹 Delete from S3
         await this.s3.send(
           new DeleteObjectCommand({
             Bucket: this.bucketName,
@@ -269,7 +311,6 @@ export class FilesService {
           }),
         );
 
-        // 🗑️ Soft delete in DB
         file.is_deleted = true;
         file.deleted_at = new Date();
         await this.fileRepo.save(file);
@@ -280,7 +321,6 @@ export class FilesService {
           status: 'deleted',
         });
       } catch (err) {
-        console.error(`❌ Error deleting ${file.filename}:`, err);
         deleteResults.push({
           file_id: file.id,
           filename: file.filename,
@@ -289,6 +329,10 @@ export class FilesService {
         });
       }
     }
+
+    await this.logsService.logAction(userId, LogAction.DELETE, {
+      details: { totalDeleted: deleteResults.length, results: deleteResults },
+    });
 
     return {
       message: `${deleteResults.length} file(s) processed`,

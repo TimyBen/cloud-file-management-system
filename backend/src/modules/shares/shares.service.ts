@@ -2,12 +2,14 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
-  UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FileShare } from './entities/share.entity';
 import { File } from '../files/entities/file.entity';
+import { LogsService, LogAction } from '../logs/logs.service';
+
 
 @Injectable()
 export class SharesService {
@@ -16,10 +18,11 @@ export class SharesService {
     private readonly shareRepo: Repository<FileShare>,
     @InjectRepository(File)
     private readonly fileRepo: Repository<File>,
+    private readonly logsService: LogsService,
   ) {}
 
   /**
-   * Share a file
+   * Create a new file share
    */
   async shareFile(
     fileId: string,
@@ -29,120 +32,154 @@ export class SharesService {
   ) {
     const file = await this.fileRepo.findOne({ where: { id: fileId } });
     if (!file) throw new NotFoundException('File not found');
-
     if (file.owner_id !== sharedByUserId)
       throw new ForbiddenException('You can only share your own files');
 
-    // Map permission to context role
-    const contextRole =
-      permission === 'write' || permission === 'comment'
-        ? 'collaborator'
-        : 'viewer';
+    let contextRole = 'viewer';
+    if (permission === 'write' || permission === 'comment')
+      contextRole = 'collaborator';
 
-    // Check if this file is already shared with this user
-    const existingShare = await this.shareRepo.findOne({
-      where: { file_id: fileId, shared_with_user_id: sharedWithUserId },
-    });
-
-    if (existingShare) {
-      // If share exists → update it instead of creating duplicate
-      existingShare.permission = permission;
-      existingShare.context_role = contextRole;
-      existingShare.is_active = true;
-      existingShare.revoked_at = null;
-
-      await this.shareRepo.save(existingShare);
-
-      return {
-        message: 'Share updated successfully',
-        share: existingShare,
-      };
-    }
-
-    // Create new share if not existing
-    const newShare = this.shareRepo.create({
+    const share = this.shareRepo.create({
       file_id: fileId,
       shared_by_user_id: sharedByUserId,
       shared_with_user_id: sharedWithUserId,
       permission,
       context_role: contextRole,
-      is_active: true,
     });
 
-    await this.shareRepo.save(newShare);
+    const savedShare = await this.shareRepo.save(share);
 
-    return {
-      message: 'File shared successfully',
-      share: newShare,
-    };
+    // Log share creation
+    await this.logsService.logAction(sharedByUserId, LogAction.SHARE_CREATE, {
+      fileId,
+      details: {
+        sharedWithUserId,
+        permission,
+        contextRole,
+      },
+      permissionChange: true,
+    });
+
+    return savedShare;
   }
 
   /**
    * List all shares for a file
    */
-  async listFileShares(fileId: string) {
-    return await this.shareRepo.find({
+  async listSharesForFile(fileId: string) {
+    const shares = await this.shareRepo.find({
       where: { file_id: fileId, is_active: true },
       relations: ['sharedWith'],
     });
+
+    return shares;
   }
 
   /**
-   * Update share permission
+   * Update an existing share (change permission or context)
    */
-  async updateShare(
-    shareId: string,
-    userId: string,
-    permission: 'read' | 'write' | 'comment',
-  ) {
+  async updateShare(shareId: string, updates: Partial<FileShare>, userId: string) {
     const share = await this.shareRepo.findOne({ where: { id: shareId } });
-    if (!share) throw new NotFoundException('Share record not found');
+    if (!share) throw new NotFoundException('Share not found');
+    if (share.shared_by_user_id !== userId)
+      throw new ForbiddenException('You can only update your own shares');
 
-    // Only file owner or admin can update
-    const file = await this.fileRepo.findOne({
-      where: { id: share.file_id },
-    });
-
-    if (!file) throw new NotFoundException('Associated file not found');
-    if (file.owner_id !== userId)
-      throw new UnauthorizedException('Only file owner can update shares');
-
-    // Update permission → context role
-    const contextRole =
-      permission === 'write' || permission === 'comment'
-        ? 'collaborator'
-        : 'viewer';
-
-    share.permission = permission;
-    share.context_role = contextRole;
-    share.is_active = true;
-    share.revoked_at = null;
-
+    const before = { ...share };
+    Object.assign(share, updates);
     await this.shareRepo.save(share);
 
-    return {
-      message: 'Share updated successfully',
-      share,
-    };
+    // Log update
+    await this.logsService.logAction(userId, LogAction.SHARE_UPDATE, {
+      fileId: share.file_id,
+      details: { before, after: share },
+      permissionChange: true,
+    });
+
+    return share;
   }
+
   /**
-   * Revoke share access
+   * Revoke a share (soft delete / deactivate)
    */
   async revokeShare(shareId: string, userId: string) {
     const share = await this.shareRepo.findOne({ where: { id: shareId } });
-    if (!share) throw new NotFoundException('Share record not found');
-
-    // Verify ownership or admin role
-    const file = await this.fileRepo.findOne({ where: { id: share.file_id } });
-    if (!file) throw new NotFoundException('File not found');
-    if (file.owner_id !== userId)
-      throw new UnauthorizedException('Only file owner can revoke access');
+    if (!share) throw new NotFoundException('Share not found');
+    if (share.shared_by_user_id !== userId)
+      throw new ForbiddenException('You can only revoke your own shares');
 
     share.is_active = false;
     share.revoked_at = new Date();
-
     await this.shareRepo.save(share);
 
-    return { message: 'File share revoked successfully', shareId };
+    // Log revoke
+    await this.logsService.logAction(userId, LogAction.SHARE_REVOKE, {
+      fileId: share.file_id,
+      details: { revokedShareId: share.id },
+      permissionChange: true,
+    });
+
+    return { message: 'Share revoked successfully', share };
+  }
+
+  /**
+   * Add a collaborator to a file (for teams or shared projects)
+   */
+  async addCollaborator(fileId: string, addedByUserId: string, collaboratorId: string) {
+    const file = await this.fileRepo.findOne({ where: { id: fileId } });
+    if (!file) throw new NotFoundException('File not found');
+
+    const share = this.shareRepo.create({
+      file_id: fileId,
+      shared_by_user_id: addedByUserId,
+      shared_with_user_id: collaboratorId,
+      permission: 'write',
+      context_role: 'collaborator',
+    });
+    const saved = await this.shareRepo.save(share);
+
+    // Log collaboration addition
+    await this.logsService.logAction(addedByUserId, LogAction.COLLAB_ADD, {
+      fileId,
+      details: { collaboratorId },
+      permissionChange: true,
+    });
+
+    return saved;
+  }
+
+  /**
+   * Remove a collaborator
+   */
+  async removeCollaborator(shareId: string, removedByUserId: string) {
+    const share = await this.shareRepo.findOne({ where: { id: shareId } });
+    if (!share) throw new NotFoundException('Collaborator not found');
+
+    share.is_active = false;
+    share.revoked_at = new Date();
+    await this.shareRepo.save(share);
+
+    // Log removal
+    await this.logsService.logAction(removedByUserId, LogAction.COLLAB_REMOVE, {
+      fileId: share.file_id,
+      details: { removedCollaborator: share.shared_with_user_id },
+      permissionChange: true,
+    });
+
+    return { message: 'Collaborator removed', share };
+  }
+
+  /**
+   * Record a comment event on a shared file
+   */
+  async commentOnFile(fileId: string, userId: string, comment: string) {
+    const file = await this.fileRepo.findOne({ where: { id: fileId } });
+    if (!file) throw new NotFoundException('File not found');
+
+    await this.logsService.logAction(userId, LogAction.COMMENT, {
+      fileId,
+      details: { comment },
+    });
+
+    return { message: 'Comment logged successfully' };
   }
 }
