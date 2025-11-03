@@ -1,9 +1,10 @@
-// src/modules/collaboration/entities/session.entity.ts
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
+  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 @Entity('collaboration_sessions')
@@ -11,18 +12,24 @@ export class CollaborationSession {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Index()
+  @Column({ type: 'uuid' })
   fileId: string;
 
-  @Column()
+  @Index()
+  @Column({ type: 'uuid' })
   startedByUserId: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamp', name: 'started_at' })
   startedAt: Date;
 
-  @Column({ nullable: true })
-  endedAt: Date;
+  @Column({ type: 'timestamp', nullable: true, name: 'ended_at' })
+  endedAt: Date | null;
 
-  @Column({ default: 'active' })
-  status: string; // active | ended
+  @Column({ type: 'varchar', length: 20, default: 'active' })
+  status: 'active' | 'ended';
+
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
+  updatedAt: Date;
 }
+
