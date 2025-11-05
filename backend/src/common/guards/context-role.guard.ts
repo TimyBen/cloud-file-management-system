@@ -27,14 +27,14 @@ export class ContextRoleGuard implements CanActivate {
     if (!user || !fileId)
       throw new ForbiddenException('Access denied: missing user or file ID');
 
-    // ✅ 1. Admins always allowed
+    // 1. Admins always allowed
     if (user.role === 'admin') return true;
 
-    // ✅ 2. Check if user owns the file
+    // 2. Check if user owns the file
     const file = await this.fileRepo.findOne({ where: { id: fileId } });
     if (file && file.owner_id === user.sub) return true;
 
-    // ✅ 3. Otherwise, verify if user is a collaborator / shared access
+    // 3. Otherwise, verify if user is a collaborator / shared access
     const share = await this.shareRepo.findOne({
       where: {
         file_id: fileId,
@@ -47,12 +47,12 @@ export class ContextRoleGuard implements CanActivate {
       throw new ForbiddenException('Access denied: no active share found');
     }
 
-    // ✅ 4. Check contextual role permissions
+    // 4. Check contextual role permissions
     if (share.context_role === 'viewer' && request.method !== 'GET') {
       throw new ForbiddenException('Viewers cannot modify files');
     }
 
-    // ✅ All checks passed
+    // All checks passed
     return true;
   }
 }
