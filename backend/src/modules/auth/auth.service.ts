@@ -21,11 +21,11 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly jwtService: JwtService,
-    private readonly logsService: LogsService, // ✅ Inject LogsService
+    private readonly logsService: LogsService, // Inject LogsService
   ) {}
 
   /**
-   * 🧾 REGISTER
+   * REGISTER
    */
   async register(data: RegisterDto) {
     const existing = await this.userRepo.findOne({
@@ -46,7 +46,7 @@ export class AuthService {
 
     delete (user as any).password;
 
-    // ✅ Log registration
+    // Log registration
     await this.logsService.logAction(user.id, LogAction.REGISTER, {
       details: { email: user.email, role: user.role },
     });
@@ -55,7 +55,7 @@ export class AuthService {
   }
 
   /**
-   * 🔐 LOGIN
+   * LOGIN
    */
   async login(data: LoginDto) {
     const user = await this.userRepo.findOne({ where: { email: data.email } });
@@ -66,7 +66,7 @@ export class AuthService {
     const tokens = await this.getTokens(user.id, user.email, user.role);
     delete (user as any).password;
 
-    // ✅ Log login
+    // Log login
     await this.logsService.logAction(user.id, LogAction.LOGIN, {
       details: { email: user.email, role: user.role },
     });
@@ -75,7 +75,7 @@ export class AuthService {
   }
 
   /**
-   * 🚪 LOGOUT
+   * LOGOUT
    */
   async logout(userId: string, token?: string) {
     if (token) {
@@ -84,14 +84,14 @@ export class AuthService {
       this.tokenBlacklist.add(userId);
     }
 
-    // ✅ Log logout
+    // Log logout
     await this.logsService.logAction(userId, LogAction.LOGOUT);
 
     return { message: 'Logout successful' };
   }
 
   /**
-   * ♻️ REFRESH TOKEN
+   * REFRESH TOKEN
    */
   async refreshToken(token: string) {
     try {
@@ -109,7 +109,7 @@ export class AuthService {
       const tokens = await this.getTokens(user.id, user.email, user.role);
       delete (user as any).password;
 
-      // ✅ Log token refresh
+      // Log token refresh
       await this.logsService.logAction(user.id, LogAction.REFRESH_TOKEN);
 
       return { message: 'Token refreshed', user, ...tokens };
@@ -119,7 +119,7 @@ export class AuthService {
   }
 
   /**
-   * 🔑 TOKEN GENERATION
+   * TOKEN GENERATION
    */
   async getTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
@@ -145,7 +145,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('User not found');
     delete (user as any).password;
 
-    // ✅ Log profile view
+    // Log profile view
     await this.logsService.logAction(user.id, LogAction.USER_UPDATE, {
       details: { viewedProfile: true },
     });

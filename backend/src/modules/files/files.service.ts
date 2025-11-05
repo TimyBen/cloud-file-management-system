@@ -27,7 +27,7 @@ export class FilesService {
     @InjectRepository(File)
     private readonly fileRepo: Repository<File>,
     private readonly configService: ConfigService,
-    private readonly logsService: LogsService, // ✅ integrated logger
+    private readonly logsService: LogsService, // integrated logger
   ) {
     const region = this.configService.get<string>('AWS_REGION');
     const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
@@ -107,7 +107,7 @@ export class FilesService {
 
       await this.fileRepo.save(file);
 
-      // ✅ Log upload action
+      // Log upload action
       await this.logsService.logAction(userId, LogAction.UPLOAD, {
         fileId: file.id,
         details: {
