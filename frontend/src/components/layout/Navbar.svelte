@@ -33,7 +33,7 @@
     >
       ☰
     </button>
-    <span class="text-lg font-semibold text-primaryDefault dark:text-primaryDark">
+    <span class="text-lg p-4 font-semibold text-primaryDefault dark:text-primaryDark">
       CloudStore AI
     </span>
   </div>
@@ -48,13 +48,14 @@
     </button>
 
     {#if currentUser}
-      <span class="hidden md:inline text-gray-700 dark:text-gray-200 text-sm">{currentUser.email}</span>
-      <button
-        class="px-3 py-1 text-sm bg-dangerLight dark:bg-dangerDark text-white rounded-md hover:opacity-90 transition"
-        on:click={() => alert("TODO: logout")}
+     <button
+        on:click={toggleTheme}
+        class="p-2 rounded-md transition-transform duration-300 hover:scale-105 active:scale-95 hover:rotate-6 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+        aria-label="Toggle theme"
       >
-        Logout
+        {#if $theme === "dark"} 🌙 {:else} ☀️ {/if}
       </button>
+
     {:else}
       <a href="/auth/login" class="text-primaryDefault dark:text-primaryDark hover:underline text-sm">
         Login

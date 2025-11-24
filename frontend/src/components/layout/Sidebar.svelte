@@ -42,8 +42,8 @@
 
 <aside
   class="fixed md:static z-30 inset-y-0 left-0 transform transition-transform duration-300
-  w-64 bg-[color:theme('colors.surface-light')] dark:bg-[color:theme('colors.surface-dark')]
-  border-r border-[color:theme('colors.border-light')] dark:border-[color:theme('colors.border-dark')] flex flex-col"
+    w-64 bg-[color:theme('colors.surface-light')] dark:bg-[color:theme('colors.surface-dark')]
+    border-r border-[color:theme('colors.border-light')] dark:border-[color:theme('colors.border-dark')] flex flex-col"
   class:translate-x-0={$sidebarOpen || !isMobile}
   class:-translate-x-full={!$sidebarOpen && isMobile}
 >
@@ -53,13 +53,17 @@
 
   <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
     {#each navLinks as link}
+      { /* compute active once per iteration to keep class attribute simple */ }
+      {@const active = isActive(link.path, $page.url.pathname)}
       <a
         href={link.path}
         on:click={closeSidebar}
-        class="block px-3 py-2 rounded-lg font-medium transition-colors duration-200
-          {isActive(link.path, $page.url.pathname)
-            ? 'bg-blue-400 text-blue-700 dark:bg-primary-dark dark:text-white shadow-sm'
-            : 'text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-border-dark'}"
+        class={
+          "block px-3 py-2 rounded-lg font-medium transition-colors duration-300 ease-in-out " +
+          (active
+            ? "bg-blue-500 text-white dark:bg-blue-700 dark:text-white shadow-sm"
+            : "text-primaryDefault dark:text-primaryDark hover:bg-blue-100 dark:hover:bg-gray-800 hover:text-blue-700 dark:hover:text-blue-400")
+        }
       >
         {link.name}
       </a>

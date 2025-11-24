@@ -1,24 +1,48 @@
 <script lang="ts">
-	let theme = localStorage.getItem('theme') || 'light';
+  import { auth } from '$lib/stores/auth';
+  import { api } from '$lib/api';
 
-	function toggleTheme() {
-		theme = theme === 'light' ? 'dark' : 'light';
-		document.documentElement.classList.toggle('dark');
-		localStorage.setItem('theme', theme);
-	}
+  let name = $auth.user?.name ?? '';
+  let email = $auth.user?.email ?? '';
+  let busy = false;
+  let message = '';
+
+  async function save() {
+    busy = true;
+    message = '';
+    try {
+      const updated = await api.updateProfile({ name, email });
+      auth.setUser(updated);
+      message = 'Profile updated';
+    } catch (err: any) {
+      message = err?.message ?? 'Failed to update';
+    } finally {
+      busy = false;
+    }
+  }
 </script>
 
-<section>
-	<h1 class="text-2xl font-semibold mb-4">Settings</h1>
+<div class="max-w-2xl">
+  <h1 class="text-3xl font-extrabold mb-4">Settings</h1>
 
-	<div class="bg-white p-6 rounded-lg shadow">
-		<h2 class="text-lg font-medium mb-2">Appearance</h2>
-		<p class="text-sm text-gray-500 mb-4">Switch between light and dark mode.</p>
-		<button
-			class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-			on:click={toggleTheme}
-		>
-			Toggle {theme === 'light' ? 'Dark' : 'Light'} Mode
-		</button>
-	</div>
-</section>
+  <div class="bg-[#0f1726] p-6 rounded-xl border border-[#16202a]">
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm text-slate-300">Name</label>
+        <input class="w-full px-3 py-2 rounded-md bg-[#071224] border border-[#16202a]" bind:value={name} />
+      </div>
+
+      <div>
+        <label class="block text-sm text-slate-300">Email</label>
+        <input class="w-full px-3 py-2 rounded-md bg-[#071224] border border-[#16202a]" bind:value={email} type="email" />
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button class="px-4 py-2 rounded-md bg-blue-600 text-white" on:click|preventDefault={save} disabled={busy}>Save</button>
+        {#if message}
+          <div class="text-slate-300">{message}</div>
+        {/if}
+      </div>
+    </div>
+  </div>
+</div>
