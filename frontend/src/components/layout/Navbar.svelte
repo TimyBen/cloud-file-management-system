@@ -1,65 +1,25 @@
 <script lang="ts">
-  import { user } from "$lib/stores/auth";
-  import { sidebarOpen, theme } from "$lib/stores/ui";
-  import { onMount } from "svelte";
+	import { user, clearAuth } from "$lib/stores/auth";
+	import { goto } from "$app/navigation";
 
-  let currentUser: { email?: string } | null = null;
-
-  onMount(() => {
-    const unsub = user.subscribe((u) => (currentUser = u));
-    return unsub;
-  });
-
-  function toggleSidebar() {
-    sidebarOpen.update((v) => !v);
-  }
-
-  function toggleTheme() {
-    theme.update((t) => (t === "light" ? "dark" : "light"));
-  }
+	function logout() {
+		clearAuth();
+		goto("/auth/logout");
+	}
 </script>
 
-<header
-  class="h-14 flex items-center justify-between px-4 md:px-6
-         bg-surfaceLight dark:bg-surfaceDark
-         border-b border-borderLight dark:border-borderDark
-         transition-colors duration-300"
->
-  <div class="flex items-center space-x-3">
-    <button
-      class="md:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-      on:click={toggleSidebar}
-      aria-label="Toggle menu"
-    >
-      ☰
-    </button>
-    <span class="text-lg p-4 font-semibold text-primaryDefault dark:text-primaryDark">
-      CloudStore AI
-    </span>
-  </div>
+<header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+	<div class="text-lg font-semibold">Dashboard</div>
 
-  <div class="flex items-center space-x-4">
-    <button
-      on:click={toggleTheme}
-      class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
-      aria-label="Toggle theme"
-    >
-      {#if $theme === "dark"} 🌙 {:else} ☀️ {/if}
-    </button>
-
-    {#if currentUser}
-     <button
-        on:click={toggleTheme}
-        class="p-2 rounded-md transition-transform duration-300 hover:scale-105 active:scale-95 hover:rotate-6 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-        aria-label="Toggle theme"
-      >
-        {#if $theme === "dark"} 🌙 {:else} ☀️ {/if}
-      </button>
-
-    {:else}
-      <a href="/auth/login" class="text-primaryDefault dark:text-primaryDark hover:underline text-sm">
-        Login
-      </a>
-    {/if}
-  </div>
+	<div class="flex items-center space-x-4">
+		{#if $user}
+			<span class="text-gray-700">{$user.email}</span>
+			<button
+				class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600"
+				on:click={logout}
+			>
+				Logout
+			</button>
+		{/if}
+	</div>
 </header>

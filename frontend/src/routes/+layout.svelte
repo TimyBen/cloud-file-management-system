@@ -1,21 +1,17 @@
 <script lang="ts">
-  import Sidebar from '$components/layout/Sidebar.svelte';
-  import Navbar from '$components/layout/Navbar.svelte';
-  import { auth } from '$lib/stores/auth';
-  import { onMount } from 'svelte';
-  import type { LayoutLoad } from './$types';
-
-  // fetch user on client mount if token exists
-  onMount(() => {
-    auth.initFromStorage();
-  });
+  import "../app.css";
+  import Sidebar from "$components/layout/Sidebar.svelte";
+  import Navbar from "$components/layout/Navbar.svelte";
 </script>
 
-<div class="min-h-screen flex bg-[#0f1a26] text-slate-200">
+<div class="flex h-screen bg-gray-50 text-gray-900">
+  <!-- Sidebar -->
   <Sidebar />
-  <div class="flex-1 flex flex-col">
+
+  <!-- Main content -->
+  <div class="flex flex-col flex-1 overflow-hidden">
     <Navbar />
-    <main class="p-6 flex-1 overflow-auto">
+    <main class="flex-1 overflow-y-auto p-6">
       <slot />
     </main>
   </div>

@@ -1,22 +1,17 @@
 <script>
-  import Sidebar from '$lib/components/Sidebar.svelte';
-  import Topbar from '$lib/components/Topbar.svelte';
-  import Dashboard from '$lib/components/Dashboard.svelte';
-  import FilesGrid from '$lib/components/FilesGrid.svelte';
-
-  let page = 'dashboard'; // toggle 'dashboard' / 'files' for demo
+	import "../app.css";
 </script>
 
-<div class="min-h-screen flex bg-[#0f1a26] text-slate-200">
-  <Sidebar bind:page />
-  <div class="flex-1 flex flex-col">
-    <Topbar />
-    <main class="p-6 flex-1 overflow-auto">
-      {#if page === 'dashboard'}
-        <Dashboard />
-      {:else}
-        <FilesGrid />
-      {/if}
-    </main>
-  </div>
-</div>
+<section class="min-h-screen flex flex-col items-center justify-center bg-gray-100 text-center p-8">
+	<h1 class="text-4xl font-bold mb-4">CloudStore AI</h1>
+	<p class="text-gray-600 max-w-xl mb-8">
+		A modern cloud file management platform with AI-powered search, analytics, and collaboration.
+	</p>
+
+	<a
+		href="/auth/login"
+		class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+	>
+		Get Started
+	</a>
+</section>
