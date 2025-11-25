@@ -11,6 +11,15 @@
     { name: "Collaboration", path: "/dashboard/collaborate" },
     { name: "Settings", path: "/settings" }
   ];
+
+  // helper to compute classes so we avoid invalid class: directives with hyphens
+  function linkClasses(path: string) {
+    const isActive = !!($page?.url?.pathname?.startsWith(path));
+    return [
+      "block px-3 py-2 rounded-lg transition-colors hover:bg-blue-50 hover:text-blue-600",
+      isActive ? "bg-blue-100 text-blue-700 font-medium" : "text-gray-700"
+    ].join(" ");
+  }
 </script>
 
 <aside
@@ -25,14 +34,11 @@
   </div>
 
   <nav class="p-4 space-y-2">
+    <!-- SSR-safe: optional chaining on $page inside the helper -->
     {#each links as link}
-      { /* Use $page (auto-subscribed store) and optional chaining to be SSR-safe */ }
       <a
         href={link.path}
-        class="block px-3 py-2 rounded-lg transition-colors hover:bg-blue-50 hover:text-blue-600"
-        class:bg-blue-100={$page?.url?.pathname?.startsWith(link.path)}
-        class:text-blue-700={$page?.url?.pathname?.startsWith(link.path)}
-        class:font-medium={$page?.url?.pathname?.startsWith(link.path)}
+        class={linkClasses(link.path)}
         title={open ? "" : link.name}
       >
         {#if open}
@@ -46,7 +52,7 @@
 </aside>
 
 <style>
-  /* small helper to make the inline class:bg-* syntax behave visually for older Tailwind setups */
+  /* small helper colors in case your Tailwind config isn't yet loaded during SSR */
   :global(.bg-blue-100) { background-color: #ebf8ff; }
   :global(.text-blue-700) { color: #1d4ed8; }
 </style>
