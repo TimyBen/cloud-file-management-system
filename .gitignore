@@ -137,3 +137,10 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+.DS_Store
+
+# Archives / exports
+*.zip
+full_sveltekit_project/
+full_sveltekit_project
+CloudStore AI UI_UX Design.make

@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "AI",
+    "_postman_id": "ai-minimal-collection",
+    "description": "Minimal AI endpoints collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "FLASK_BASE_URL", "value": "http://127.0.0.1:5000" },
+    { "key": "AI_BEARER", "value": "" }
+  ],
+  "item": [
+    { "name": "Health", "request": { "method": "GET", "url": "{{FLASK_BASE_URL}}/health" } },
+    { "name": "Meta models", "request": { "method": "GET", "header": [{ "key":"Authorization", "value":"Bearer {{AI_BEARER}}"}], "url": "{{FLASK_BASE_URL}}/meta/models" } },
+    { "name": "Embed", "request": { "method":"POST", "header":[{"key":"Authorization","value":"Bearer {{AI_BEARER}"},{"key":"Content-Type","value":"application/json"}], "body":{"mode":"raw","raw":"{ \"text\": \"test embed\" }"}, "url":"{{FLASK_BASE_URL}}/embed"} },
+    { "name": "Annotate", "request": { "method":"POST", "header":[{"key":"Authorization","value":"Bearer {{AI_BEARER}"},{"key":"Content-Type","value":"application/json"}], "body":{"mode":"raw","raw":"{ \"file_key\":\"demo-1\",\"text\":\"This doc is about cloud storage\" }"}, "url":"{{FLASK_BASE_URL}}/annotate"} },
+    { "name":"Semantic Search", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{AI_BEARER}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"query\":\"invoice from acme\",\"top_k\":5 }"},"url":"{{FLASK_BASE_URL}}/search/semantic"} },
+    { "name":"Anomaly Score","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{AI_BEARER}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"entity_type\":\"user\",\"entity_id\":\"u1\",\"features\":{\"last_24h_download_mb\":1200,\"write_count\":10}}"},"url":"{{FLASK_BASE_URL}}/anomaly/score"} },
+    { "name":"Forecast","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{AI_BEARER}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{ \"file_key\":\"file-1\",\"access_series\":[{\"ts\":1700000000,\"count\":1}],\"horizon_days\":30 }"},"url":"{{FLASK_BASE_URL}}/forecast"} }
+  ]
+}
