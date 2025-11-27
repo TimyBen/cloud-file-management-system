@@ -142,11 +142,13 @@ export class AuthService {
    */
   async getProfile(userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
+
     if (!user) throw new UnauthorizedException('User not found');
+
     delete (user as any).password;
 
-    // Log profile view
     await this.logsService.logAction(user.id, LogAction.USER_UPDATE, {
+      fileId: null,
       details: { viewedProfile: true },
     });
 

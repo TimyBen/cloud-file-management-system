@@ -145,7 +145,7 @@
             <span class="h-1.5 w-1.5 rounded-full bg-cyan-300"></span>
             <span class="truncate">
               <span class="text-slate-200/90">user@example.com</span> uploaded
-              <strong class="font-semibold"> contract-q4.pdf</strong>
+              <!-- <strong class="font-semibold"> contract-q4.pdf</strong> -->
             </span>
           </div>
           <div class="text-xs text-slate-300/80">2 minutes ago</div>

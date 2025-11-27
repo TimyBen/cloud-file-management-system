@@ -1,12 +1,40 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { AIService } from './ai.service';
+import { Controller, Post, Get, Body } from '@nestjs/common';
+import { AiService } from './ai.service';
 
 @Controller('ai')
-export class AIController {
-  constructor(private aiService: AIService) {}
+export class AiController {
+  constructor(private readonly ai: AiService) {}
 
-  @Get('analyze/:fileId')
-  analyze(@Param('fileId') fileId: string) {
-    return this.aiService.analyzeFileActivity(fileId);
+  @Get('health')
+  health() {
+    // return this.ai.health();
+  }
+
+  @Post('embed')
+  embed(@Body() body: { text: string }) {
+    return this.ai.embedText(body.text);
+  }
+
+  @Post('annotate')
+  annotate(@Body() body: { fileKey: string; text: string }) {
+    return this.ai.annotate(body.fileKey, body.text);
+  }
+
+  @Post('anomaly')
+  anomaly(
+    @Body() body: { entityType: string; entityId: string; features: any },
+  ) {
+    return this.ai.anomalyScore(body.entityType, body.entityId, body.features);
+  }
+
+  @Post('forecast')
+  forecast(
+    @Body() body: { fileKey: string; accessSeries: any[]; horizon?: number },
+  ) {
+    return this.ai.forecast(
+      body.fileKey,
+      body.accessSeries,
+      body.horizon ?? 30,
+    );
   }
 }
