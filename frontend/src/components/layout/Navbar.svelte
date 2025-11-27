@@ -1,25 +1,29 @@
 <script lang="ts">
-	import { user, clearAuth } from "$lib/stores/auth";
-	import { goto } from "$app/navigation";
+	import { auth, clearAuth } from '$lib/stores/auth';
 
-	function logout() {
+	let user;
+	$: user = $auth?.user;
+
+	async function logout() {
 		clearAuth();
-		goto("/auth/logout");
+
+		await fetch('/auth/logout', { method: 'POST' });
+
+		window.location.href = '/auth/login';
 	}
 </script>
 
-<header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-	<div class="text-lg font-semibold">Dashboard</div>
-
-	<div class="flex items-center space-x-4">
-		{#if $user}
-			<span class="text-gray-700">{$user.email}</span>
-			<button
-				class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600"
-				on:click={logout}
-			>
-				Logout
-			</button>
-		{/if}
+<nav class="w-full bg-white border-b border-gray-200 px-6 py-5 flex justify-between items-center">
+	<div class="text-gray-600 text-sm pl-12 font-serif font-bold">
+		Welcome, {user?.display_name || user?.email}
 	</div>
-</header>
+
+	<div class="flex items-center gap-4">
+		<button
+			class="px-3 py-1 text-sm bg-red-500 hover:bg-red-600 text-white rounded-md"
+			on:click={logout}
+		>
+			Logout
+		</button>
+	</div>
+</nav>

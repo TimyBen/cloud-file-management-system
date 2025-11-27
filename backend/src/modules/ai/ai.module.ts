@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
-import { AIService } from './ai.service';
-import { AIController } from './ai.controller';
+import { AiService } from './ai.service';
+import { ServiceAccountService } from './service-account.service';
+import { AuthController } from './auth.controller';
 
 @Module({
-  controllers: [AIController],
-  providers: [AIService],
+  providers: [AiService, ServiceAccountService],
+  controllers: [AuthController],
+  exports: [AiService],
 })
-export class AIModule {}
+export class AiModule {}

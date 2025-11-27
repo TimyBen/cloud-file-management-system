@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* === SIDEBAR / HAMBURGER VISIBILITY === */
+
+.mobile-toggle,
+.mobile-sidebar {
+  display: block;
+}
+
+.desktop-sidebar {
+  display: none;
+}
+
+/* Desktop and up (1024px+) */
+@media (min-width: 1024px) {
+  .mobile-toggle,
+  .mobile-sidebar {
+    display: none;
+  }
+
+  .desktop-sidebar {
+    display: flex; 
+  }
+}

@@ -9,18 +9,17 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
 import { LogsService } from '../logs/logs.service';
-import { LogAction } from '../logs/logs.service'; // ✅ Adjust import to match your project
-
+import { LogAction } from '../logs/logs.service';
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    private readonly logsService: LogsService, // ✅ Inject LogsService
+    private readonly logsService: LogsService,
   ) {}
 
   /**
-   * 👤 Create a new user (manual or by admin)
+   *  Create a new user (manual or by admin)
    */
   async create(data: Partial<User>) {
     const existing = await this.userRepo.findOne({
@@ -38,7 +37,7 @@ export class UsersService {
     const savedUser = await this.userRepo.save(newUser);
     const { password, ...safeUser } = savedUser;
 
-    // ✅ Log user creation
+    // Log user creation
     await this.logsService.logAction(savedUser.id, LogAction.USER_CREATE, {
       details: { email: savedUser.email, role: savedUser.role },
     });
@@ -91,7 +90,7 @@ export class UsersService {
 
     const { password, ...safeUser } = updatedUser;
 
-    // ✅ Log update
+    // Log update
     await this.logsService.logAction(user.id, LogAction.USER_UPDATE, {
       details: { before: oldData, after: safeUser },
     });
@@ -100,7 +99,7 @@ export class UsersService {
   }
 
   /**
-   * ❌ Delete user (soft delete)
+   * Delete user (soft delete)
    */
   async remove(id: string) {
     const user = await this.userRepo.findOne({ where: { id } });
@@ -111,7 +110,7 @@ export class UsersService {
 
     const { password, ...safeUser } = user;
 
-    // ✅ Log deletion
+    // Log deletion
     await this.logsService.logAction(user.id, LogAction.USER_DELETE, {
       details: { email: user.email },
     });
@@ -120,7 +119,7 @@ export class UsersService {
   }
 
   /**
-   * 💤 Soft-delete user (flag only)
+   * Soft-delete user (flag only)
    */
   async softDeleteUser(id: string) {
     const user = await this.userRepo.findOne({ where: { id } });
@@ -129,7 +128,7 @@ export class UsersService {
     user.deleted_at = new Date();
     await this.userRepo.save(user);
 
-    // ✅ Log soft deletion
+    // Log soft deletion
     await this.logsService.logAction(user.id, LogAction.USER_DELETE, {
       details: { email: user.email, softDelete: true },
     });

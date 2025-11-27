@@ -8,7 +8,7 @@ import { FilesModule } from './modules/files/files.module';
 import { SharesModule } from './modules/shares/shares.module';
 import { LogsModule } from './modules/logs/logs.module';
 import { CollaborationModule } from './modules/collaboration/collaboration.module';
-import { AIModule } from './modules/ai/ai.module';
+import { AiModule } from './modules/ai/ai.module';
 import { ComplianceModule } from './modules/compliance/compliance.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EventsGateway } from './websocket/events.gateway';
@@ -23,7 +23,7 @@ import { EventsGateway } from './websocket/events.gateway';
     SharesModule,
     LogsModule,
     CollaborationModule,
-    AIModule,
+    AiModule,
     ComplianceModule,
   ],
   providers: [EventsGateway],
