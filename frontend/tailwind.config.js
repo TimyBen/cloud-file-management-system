@@ -4,6 +4,7 @@ export default {
     './src/routes/**/*.{svelte,js,ts}',
     './src/lib/**/*.{svelte,js,ts}'
   ],
+  darkMode: 'class', // <- Important
   theme: {
     extend: {},
     screens: {
@@ -14,5 +15,5 @@ export default {
       '2xl': '1536px'
     }
   },
-  plugins: [],
+  plugins: []
 }

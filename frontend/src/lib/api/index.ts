@@ -408,7 +408,6 @@ export async function listLogs(query: Record<string, any> = {}): Promise<any> {
    --------------------------- */
 
 /**
- * Collaboration endpoints often use WebSocket. For completeness we provide
  * HTTP helpers for session creation and simple messages.
  *
  * POST /collab/session  -> { sessionId, token? }
