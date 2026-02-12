@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from 'src/modules/users/entities/user.entity';
 
 @Entity('files')
+@Index('idx_files_owner_relative_path', ['owner_id', 'relative_path'])
 export class File {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -56,4 +58,20 @@ export class File {
 
   @Column({ type: 'timestamp', nullable: true })
   retention_until: Date;
+
+  // ✅ NEW: stores folder structure like "MyFolder/sub/photo.jpg"
+  @Column({ type: 'text', nullable: true })
+  relative_path: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  has_thumbnail: boolean;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  thumbnail_path: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  preview_status: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  preview_generated_at: Date;
 }

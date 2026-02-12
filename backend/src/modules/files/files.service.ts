@@ -55,30 +55,23 @@ export class FilesService {
     originalName: string,
     mimeType: string,
     userId: string,
-    mode: 'new' | 'duplicate' | 'update' = 'new',
+    mode: 'new' | 'update' = 'new',
   ) {
     const existingFile = await this.fileRepo.findOne({
       where: { owner_id: userId, filename: originalName, is_deleted: false },
     });
 
-    if (existingFile && mode === 'new') {
-      throw new ConflictException({
-        message: 'File already exists. Choose to duplicate or update version.',
-        options: ['duplicate', 'update'],
-      });
-    }
-
     let filename = originalName;
     let previousVersionId: string | undefined;
 
-    if (existingFile && mode === 'duplicate') {
-      const ext = originalName.split('.').pop();
-      const base = originalName.replace(`.${ext}`, '');
-      filename = `${base}-copy.${ext}`;
-    }
-
+    // If file exists and user chose UPDATE: version it
     if (existingFile && mode === 'update') {
       previousVersionId = existingFile.version_id || existingFile.id;
+    }
+
+    // If file exists and user chose NEW: auto-suffix (2), (3), ...
+    if (existingFile && mode === 'new') {
+      filename = await this.makeUniqueFilename(userId, originalName);
     }
 
     const versionId = `v-${Date.now()}`;
@@ -107,25 +100,40 @@ export class FilesService {
 
       await this.fileRepo.save(file);
 
-      // Log upload action
       await this.logsService.logAction(userId, LogAction.UPLOAD, {
         fileId: file.id,
-        details: {
-          filename: file.filename,
-          size: file.file_size,
-          version: file.version_id,
-        },
+        details: { filename: file.filename, size: file.file_size, version: file.version_id },
       });
 
-      return {
-        message: existingFile
-          ? 'File updated successfully'
-          : 'File uploaded successfully',
-        file,
-      };
+      return { message: 'File uploaded successfully', file };
     } catch (err) {
       console.error('Upload Error:', err);
       throw new InternalServerErrorException('Failed to upload file');
+    }
+  }
+
+  private async makeUniqueFilename(userId: string, originalName: string): Promise<string> {
+    // Split into base/ext safely
+    const dot = originalName.lastIndexOf('.');
+    const hasExt = dot > 0 && dot < originalName.length - 1;
+
+    const base = hasExt ? originalName.slice(0, dot) : originalName;
+    const ext = hasExt ? originalName.slice(dot) : '';
+
+    // Find existing files that start with base and end with ext
+    // We’ll just loop; typical user counts are small.
+    let n = 2;
+    let candidate = `${base} (${n})${ext}`;
+
+    while (true) {
+      const exists = await this.fileRepo.findOne({
+        where: { owner_id: userId, filename: candidate, is_deleted: false },
+      });
+
+      if (!exists) return candidate;
+
+      n += 1;
+      candidate = `${base} (${n})${ext}`;
     }
   }
 

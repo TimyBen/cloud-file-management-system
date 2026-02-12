@@ -13,6 +13,7 @@ import {
   Req,
   UnauthorizedException,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
@@ -20,6 +21,7 @@ import { JwtAuthGuard } from '../auth/strategies/jwt.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { ContextRoleGuard } from '../../common/guards/context-role.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { In } from 'typeorm';
 import type { Express } from 'express';
 
 @Controller('files')
@@ -27,13 +29,14 @@ import type { Express } from 'express';
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
-  /**
-   * Upload a single file (Admins & Users)
-   */
   @Post('upload')
   @Roles('admin', 'user')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadFile(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+    @Query('mode') mode?: 'new' | 'update',
+  ) {
     const userId = req.user?.sub;
     if (!userId) throw new UnauthorizedException('User ID missing in token');
     if (!file) throw new BadRequestException('No file uploaded');
@@ -43,12 +46,10 @@ export class FilesController {
       file.originalname,
       file.mimetype,
       userId,
+      mode ?? 'new',
     );
   }
 
-  /**
-   * Upload multiple files (Admins & Users)
-   */
   @Post('upload/multiple')
   @Roles('admin', 'user')
   @UseInterceptors(FilesInterceptor('files', 10))

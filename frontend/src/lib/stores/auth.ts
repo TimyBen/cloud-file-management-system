@@ -1,7 +1,7 @@
-// src/lib/stores/auth.ts
-import { writable } from "svelte/store";
+import { writable, get } from "svelte/store";
 import type { IUser } from "$lib/types/types";
 import { browser } from "$app/environment";
+import { files } from '$lib/stores/files';
 
 export interface AuthState {
   token: string | null;
@@ -40,6 +40,53 @@ export function loadAuth() {
 export function clearAuth() {
   store.set(initial);
   persist(initial);
+  files.clearCache(); // Clear files cache on logout
+}
+
+// NEW: Get current auth state
+export function getAuth(): AuthState {
+  return get(store);
+}
+
+// NEW: Get token directly
+export function getToken(): string | null {
+  return get(store).token;
+}
+
+// NEW: Get user directly
+export function getUser(): IUser | null {
+  return get(store).user;
+}
+
+// NEW: Login function
+export async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setAuth(data.token, data.user);
+      return { success: true };
+    } else {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.message || 'Login failed'
+      };
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Network error'
+    };
+  }
 }
 
 /* Default store with helpful methods */
@@ -50,10 +97,34 @@ function createAuthStore() {
     subscribe,
     set,
     update,
-    async login(fn: (body: any) => Promise<any>) {
-      // optional convenience wrapper for UI usage
-      return fn;
+
+    // Get current token
+    getToken(): string | null {
+      return getToken();
     },
+
+    // Get current user
+    getUser(): IUser | null {
+      return getUser();
+    },
+
+    // Get full auth state
+    getAuth(): AuthState {
+      return getAuth();
+    },
+
+    // Check if user is authenticated
+    isAuthenticated(): boolean {
+      const state = get(store);
+      return !!state.token && !!state.user;
+    },
+
+    // Convenience login method
+    async login(email: string, password: string) {
+      return await login(email, password);
+    },
+
+    // Reset/Logout
     reset() {
       clearAuth();
     }
@@ -61,3 +132,8 @@ function createAuthStore() {
 }
 
 export const auth = createAuthStore();
+
+// Auto-load auth on store initialization
+if (browser) {
+  loadAuth();
+}

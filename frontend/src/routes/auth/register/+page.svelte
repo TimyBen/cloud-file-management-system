@@ -84,32 +84,34 @@
     color: hsl(var(--foreground));
   "
 >
-	<a
-		href="/"
-		class="text-3xl font-bold mb-2"
-    style="
-      background: linear-gradient(to right,
-        hsl(var(--primary)),
-        hsl(173, 80%, 40%)
-      );
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    "
-	>
-		CloudStore AI
-	</a>
-	<p
-    class="max-w-lg text-sm"
-    style="color: hsl(var(--muted-foreground))"
-  >
-		Create an account to start managing your files securely.
-	</p>
+	 <div class="pt-10">
+    <a
+      href="/"
+      class="text-3xl font-bold mb-2"
+      style="
+        background: linear-gradient(to right,
+          hsl(var(--primary)),
+          hsl(173, 80%, 40%)
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      "
+    >
+      CloudStore AI
+    </a>
+    <p
+      class="max-w-lg text-sm"
+      style="color: hsl(var(--muted-foreground))"
+    >
+      A modern AI-powered cloud file management platform.
+    </p>
+  </div>
 </section>
 
 <!-- REGISTER CARD -->
 <div
-  class="min-h-screen flex items-center justify-center px-4"
+  class="min-h-[85vh] flex items-center justify-center px-4"
   style="background-color: hsl(var(--background))"
 >
 	<form

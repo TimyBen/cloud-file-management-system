@@ -1,5 +1,4 @@
-// src/lib/stores/files.ts
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export interface File {
@@ -10,16 +9,15 @@ export interface File {
   uploaded_at: string;
   shared: boolean;
   share_url?: string;
-  // Add other properties from your API
 }
 
 interface FileStore {
   files: File[];
   lastUpdated: number;
-  lastFetched: number; // When we last fetched from API
+  lastFetched: number;
   isLoading: boolean;
   error: string | null;
-  version: number; // For cache invalidation
+  version: number;
 }
 
 const CACHE_KEY = 'cloudstore_files_cache';
@@ -45,7 +43,6 @@ function createFileStore() {
       if (saved) {
         const parsed = JSON.parse(saved);
 
-        // Check version and TTL
         const isExpired = Date.now() - parsed.lastFetched > CACHE_TTL;
         const isWrongVersion = parsed.version !== CACHE_VERSION;
 
@@ -63,7 +60,7 @@ function createFileStore() {
     }
   }
 
-  return {
+  const store = {
     subscribe,
 
     // Set files and cache them
@@ -79,15 +76,54 @@ function createFileStore() {
           version: CACHE_VERSION
         };
 
-        // Only cache if we have files
-        if (files.length > 0 || forceUpdate) {
-          if (browser) {
-            localStorage.setItem(CACHE_KEY, JSON.stringify(newState));
-          }
+        // ALWAYS cache when files are set (even empty array)
+        if (browser) {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(newState));
         }
 
         return newState;
       });
+    },
+
+    // Load files from API
+    loadFiles: async (forceRefresh = false): Promise<File[]> => {
+      // Don't load if cache is fresh (unless forcing refresh)
+      if (!forceRefresh && store.isCacheFresh()) {
+        console.log('📁 Using cached files');
+        return get(store).files;
+      }
+
+      store.setLoading(true);
+      store.setError(null);
+
+      try {
+        // Get auth token from localStorage
+        let token = '';
+        if (browser) {
+          token = localStorage.getItem('auth.token') || '';
+        }
+
+        const response = await fetch('/api/files', {
+          headers: token ? {
+            'Authorization': `Bearer ${token}`
+          } : {}
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch files: ${response.statusText}`);
+        }
+
+        const fetchedFiles: File[] = await response.json();
+        store.setFiles(fetchedFiles);
+
+        return fetchedFiles;
+      } catch (error) {
+        console.error('Failed to load files:', error);
+        store.setError(error instanceof Error ? error.message : 'Unknown error');
+        throw error;
+      } finally {
+        store.setLoading(false);
+      }
     },
 
     // Add a single file
@@ -97,7 +133,7 @@ function createFileStore() {
         const newState = {
           files: newFiles,
           lastUpdated: Date.now(),
-          lastFetched: state.lastFetched, // Keep original fetch time
+          lastFetched: state.lastFetched,
           isLoading: false,
           error: null,
           version: CACHE_VERSION
@@ -225,6 +261,8 @@ function createFileStore() {
       }
     }
   };
+
+  return store;
 }
 
 export const files = createFileStore();

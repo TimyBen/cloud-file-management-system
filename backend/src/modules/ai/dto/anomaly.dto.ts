@@ -2,8 +2,7 @@ import { IsString, IsObject } from 'class-validator';
 
 export class AnomalyDto {
   @IsString()
-  entityType: string;   // "user" | "file" | "session"
-
+  entityType: string;
   @IsString()
   entityId: string;
 

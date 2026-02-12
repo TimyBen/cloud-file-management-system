@@ -21,6 +21,7 @@
         transparent 55%);
   "
 >
+
   <div class="absolute top-6 right-6 z-10">
     <ThemeToggle />
   </div>
