@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 full_sveltekit_project/
 full_sveltekit_project
 CloudStore AI UI_UX Design.make
+ai_flask_service/.venv/
+ai_flask_service/__pycache__/
+ai_flask_service/*.pyc
