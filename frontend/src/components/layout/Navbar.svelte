@@ -116,17 +116,181 @@
 </script>
 
 <nav
-  class="w-full border-b px-4 sm:px-6 py-4 sm:py-5 flex flex-row gap-3 sm:flex-row sm:items-center sm:justify-between"
+  class="w-full border-b px-4 sm:px-6 py-4 sm:py-5 flex flex-row gap-5 sm:flex-row sm:items-center sm:justify-center"
   style="background-color: hsl(var(--card)); border-color: hsl(var(--border));"
 >
   <!-- Top row on mobile: Welcome + Right actions -->
-  <div class="flex items-center justify-between gap-3 sm:hidden">
+  <div class="flex pl-10 w-full items-center justify-between gap-3 sm:hidden">
     <div
-      class="text-sm font-serif font-bold truncate"
+      class="text-m font-serif font-bold truncate"
       style="color: hsl(var(--foreground))"
       title={user?.display_name || user?.email}
     >
       Welcome, {user?.display_name || user?.email}
+    </div>
+
+     <!-- Search -->
+    <div class="flex-1 w-full sm:max-w-2xl sm:mx-8">
+      <!-- IMPORTANT: do NOT attach DOM listeners on SSR. We only stop propagation here. -->
+      <div class="relative" bind:this={searchWrap} on:click|stopPropagation>
+        <input
+          type="text"
+          placeholder="Search files and folders..."
+          value={$searchQuery}
+          on:input={onInput}
+          on:keydown={onKeyDown}
+          on:focus={onFocus}
+          class="w-full px-4 py-2 pl-10 pr-9 rounded-md border text-sm"
+          style="
+            background-color: hsl(var(--background));
+            border-color: hsl(var(--border));
+            color: hsl(var(--foreground));
+          "
+          autocomplete="off"
+        />
+
+        <!-- Search icon -->
+        <svg
+          class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+          style="color: hsl(var(--muted-foreground))"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+
+        {#if $searchQuery}
+          <button
+            type="button"
+            on:click={onClearClick}
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-lg px-1 rounded"
+            style="color: hsl(var(--muted-foreground))"
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        {/if}
+
+        <!-- Dropdown -->
+        {#if $showSearchResults && $searchQuery.trim()}
+          <div
+            class="absolute left-0 right-0 mt-2 rounded-lg border shadow-lg overflow-hidden z-50"
+            style="background-color: hsl(var(--card)); border-color: hsl(var(--border))"
+            role="listbox"
+            aria-label="Search results"
+          >
+            <!-- Header line -->
+            <div
+              class="px-3 py-2 text-xs flex items-center justify-between border-b"
+              style="border-color: hsl(var(--border)); color: hsl(var(--muted-foreground))"
+            >
+              <span>
+                {#if $filteredFiles.length + $folderResults.length > 0}
+                  Results for "<span style="color: hsl(var(--foreground))">{$searchQuery}</span>"
+                {:else}
+                  No results for "<span style="color: hsl(var(--foreground))">{$searchQuery}</span>"
+                {/if}
+              </span>
+
+              <button
+                type="button"
+                class="text-xs px-2 py-1 rounded"
+                style="border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground))"
+                on:click={onClearClick}
+              >
+                Clear
+              </button>
+            </div>
+
+            <div class="max-h-[340px] overflow-auto">
+              {#if $folderResults.length > 0}
+                <div
+                  class="px-3 pt-2 pb-1 text-[0.7rem] uppercase tracking-wide"
+                  style="color: hsl(var(--muted-foreground))"
+                >
+                  Folders
+                </div>
+
+                {#each $folderResults as fr, i (fr.folder)}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={$activeResultIndex === i}
+                    class="w-full text-left px-3 py-2 flex items-center justify-between hover:opacity-90"
+                    style="
+                      background-color: {($activeResultIndex === i) ? 'hsl(var(--accent))' : 'transparent'};
+                      color: hsl(var(--foreground));
+                    "
+                    on:click={() => {
+                      const next = fr.folder.endsWith('/') ? fr.folder : `${fr.folder}/`;
+                      searchQuery.set(next);
+                      performSearchDebounced(next, 0);
+                      openSearchDropdown();
+                    }}
+                  >
+                    <div class="min-w-0 flex items-center gap-2">
+                      <span style="color: hsl(var(--muted-foreground))">📁</span>
+                      <span class="truncate">{fr.folder}</span>
+                    </div>
+                    <span class="text-xs shrink-0" style="color: hsl(var(--muted-foreground))">
+                      {fr.count}
+                    </span>
+                  </button>
+                {/each}
+              {/if}
+
+              {#if $filteredFiles.length > 0}
+                <div
+                  class="px-3 pt-2 pb-1 text-[0.7rem] uppercase tracking-wide"
+                  style="color: hsl(var(--muted-foreground))"
+                >
+                  Files
+                </div>
+
+                {#each $filteredFiles as f, j (f.id)}
+                  {@const idx = j + $folderResults.length}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={$activeResultIndex === idx}
+                    class="w-full text-left px-3 py-2 flex items-start justify-between hover:opacity-90"
+                    style="
+                      background-color: {($activeResultIndex === idx) ? 'hsl(var(--accent))' : 'transparent'};
+                      color: hsl(var(--foreground));
+                    "
+                    on:click={() => {
+                      window.location.href = '/dashboard/files';
+                      closeSearchDropdown();
+                    }}
+                  >
+                    <div class="min-w-0">
+                      <div class="text-sm truncate">{f.filename}</div>
+                      <div class="text-xs mt-0.5" style="color: hsl(var(--muted-foreground))">
+                        {f.file_type || f.mime_type || 'Unknown type'} • {formatBytes(f.file_size)}
+                      </div>
+                    </div>
+
+                    <span class="text-xs shrink-0" style="color: hsl(var(--muted-foreground))">→</span>
+                  </button>
+                {/each}
+              {/if}
+
+              {#if $filteredFiles.length === 0 && $folderResults.length === 0}
+                <div class="px-3 py-4 text-sm" style="color: hsl(var(--muted-foreground))">
+                  Try searching by filename, type, or a folder path.
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div>
     </div>
 
     <div class="flex items-center gap-2 shrink-0">
@@ -151,169 +315,7 @@
     Welcome, {user?.display_name || user?.email}
   </div>
 
-  <!-- Search -->
-  <div class="flex-1 w-full sm:max-w-2xl sm:mx-8">
-    <!-- IMPORTANT: do NOT attach DOM listeners on SSR. We only stop propagation here. -->
-    <div class="relative" bind:this={searchWrap} on:click|stopPropagation>
-      <input
-        type="text"
-        placeholder="Search files and folders..."
-        value={$searchQuery}
-        on:input={onInput}
-        on:keydown={onKeyDown}
-        on:focus={onFocus}
-        class="w-full px-4 py-2 pl-10 pr-9 rounded-md border text-sm"
-        style="
-          background-color: hsl(var(--background));
-          border-color: hsl(var(--border));
-          color: hsl(var(--foreground));
-        "
-        autocomplete="off"
-      />
 
-      <!-- Search icon -->
-      <svg
-        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-        style="color: hsl(var(--muted-foreground))"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-        />
-      </svg>
-
-      {#if $searchQuery}
-        <button
-          type="button"
-          on:click={onClearClick}
-          class="absolute right-2 top-1/2 -translate-y-1/2 text-lg px-1 rounded"
-          style="color: hsl(var(--muted-foreground))"
-          aria-label="Clear search"
-        >
-          ×
-        </button>
-      {/if}
-
-      <!-- Dropdown -->
-      {#if $showSearchResults && $searchQuery.trim()}
-        <div
-          class="absolute left-0 right-0 mt-2 rounded-lg border shadow-lg overflow-hidden z-50"
-          style="background-color: hsl(var(--card)); border-color: hsl(var(--border))"
-          role="listbox"
-          aria-label="Search results"
-        >
-          <!-- Header line -->
-          <div
-            class="px-3 py-2 text-xs flex items-center justify-between border-b"
-            style="border-color: hsl(var(--border)); color: hsl(var(--muted-foreground))"
-          >
-            <span>
-              {#if $filteredFiles.length + $folderResults.length > 0}
-                Results for "<span style="color: hsl(var(--foreground))">{$searchQuery}</span>"
-              {:else}
-                No results for "<span style="color: hsl(var(--foreground))">{$searchQuery}</span>"
-              {/if}
-            </span>
-
-            <button
-              type="button"
-              class="text-xs px-2 py-1 rounded"
-              style="border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground))"
-              on:click={onClearClick}
-            >
-              Clear
-            </button>
-          </div>
-
-          <div class="max-h-[340px] overflow-auto">
-            {#if $folderResults.length > 0}
-              <div
-                class="px-3 pt-2 pb-1 text-[0.7rem] uppercase tracking-wide"
-                style="color: hsl(var(--muted-foreground))"
-              >
-                Folders
-              </div>
-
-              {#each $folderResults as fr, i (fr.folder)}
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={$activeResultIndex === i}
-                  class="w-full text-left px-3 py-2 flex items-center justify-between hover:opacity-90"
-                  style="
-                    background-color: {($activeResultIndex === i) ? 'hsl(var(--accent))' : 'transparent'};
-                    color: hsl(var(--foreground));
-                  "
-                  on:click={() => {
-                    const next = fr.folder.endsWith('/') ? fr.folder : `${fr.folder}/`;
-                    searchQuery.set(next);
-                    performSearchDebounced(next, 0);
-                    openSearchDropdown();
-                  }}
-                >
-                  <div class="min-w-0 flex items-center gap-2">
-                    <span style="color: hsl(var(--muted-foreground))">📁</span>
-                    <span class="truncate">{fr.folder}</span>
-                  </div>
-                  <span class="text-xs shrink-0" style="color: hsl(var(--muted-foreground))">
-                    {fr.count}
-                  </span>
-                </button>
-              {/each}
-            {/if}
-
-            {#if $filteredFiles.length > 0}
-              <div
-                class="px-3 pt-2 pb-1 text-[0.7rem] uppercase tracking-wide"
-                style="color: hsl(var(--muted-foreground))"
-              >
-                Files
-              </div>
-
-              {#each $filteredFiles as f, j (f.id)}
-                {@const idx = j + $folderResults.length}
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={$activeResultIndex === idx}
-                  class="w-full text-left px-3 py-2 flex items-start justify-between hover:opacity-90"
-                  style="
-                    background-color: {($activeResultIndex === idx) ? 'hsl(var(--accent))' : 'transparent'};
-                    color: hsl(var(--foreground));
-                  "
-                  on:click={() => {
-                    window.location.href = '/dashboard/files';
-                    closeSearchDropdown();
-                  }}
-                >
-                  <div class="min-w-0">
-                    <div class="text-sm truncate">{f.filename}</div>
-                    <div class="text-xs mt-0.5" style="color: hsl(var(--muted-foreground))">
-                      {f.file_type || f.mime_type || 'Unknown type'} • {formatBytes(f.file_size)}
-                    </div>
-                  </div>
-
-                  <span class="text-xs shrink-0" style="color: hsl(var(--muted-foreground))">→</span>
-                </button>
-              {/each}
-            {/if}
-
-            {#if $filteredFiles.length === 0 && $folderResults.length === 0}
-              <div class="px-3 py-4 text-sm" style="color: hsl(var(--muted-foreground))">
-                Try searching by filename, type, or a folder path.
-              </div>
-            {/if}
-          </div>
-        </div>
-      {/if}
-    </div>
-  </div>
 
   <!-- Desktop right -->
   <div class="hidden sm:flex items-center gap-4 min-w-[150px] justify-end shrink-0">

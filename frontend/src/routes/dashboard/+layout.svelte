@@ -34,13 +34,13 @@
 </div>
 
 <button
-  class="mobile-toggle fixed top-7 left-4 z-50 p-2 rounded-md shadow flex items-center justify-center"
+  class="mobile-toggle fixed top-8 left-5 z-50 p-2 rounded-md shadow flex items-center justify-center"
   style="background-color: hsl(var(--card))"
   on:click={() => (mobileOpen = !mobileOpen)}
   on:mouseenter={(e) => e.currentTarget.style.backgroundColor = 'hsl(var(--accent))'}
   on:mouseleave={(e) => e.currentTarget.style.backgroundColor = 'hsl(var(--card))'}
 >
-  <span class="relative w-7 h-7">
+  <span class="relative w-8 h-8">
     <Menu
       size="24"
       class={

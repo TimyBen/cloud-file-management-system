@@ -40,16 +40,9 @@
 	"
 >
 	<div
-		class="flex items-center justify-between p-4 border-b"
+		class="flex items-center justify-center pt-6 p-4 border-b"
 		style="border-color: hsl(var(--border))"
 	>
-		<div
-			class="flex items-center gap-2 font-bold text-xl"
-			style="color: hsl(var(--primary))"
-		>
-			<Cloud size="22" />
-			{#if open}<span>CloudStore</span>{/if}
-		</div>
 
 		<button
 			class="p-1 rounded-md transition-colors"
@@ -60,10 +53,19 @@
 			on:mouseenter={(e) => e.currentTarget.style.backgroundColor = 'hsl(var(--accent))'}
 			on:mouseleave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
 		>
-			<ChevronLeft
+		<div
+			class="flex items-center gap-2 font-bold text-xl"
+			style="color: hsl(var(--primary))"
+		>
+			<Cloud size="22" />
+			{#if open}<span>CloudStore</span>{/if}
+		</div>
+
+
+			<!-- <ChevronLeft
 				size="20"
 				class={"transition-transform " + (!open ? "rotate-180" : "")}
-			/>
+			/> -->
 		</button>
 	</div>
 
