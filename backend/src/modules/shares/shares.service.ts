@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
 import { FileShare } from './entities/share.entity';
 import { File } from '../files/entities/file.entity';
 import { LogsService, LogAction } from '../logs/logs.service';
-
 
 @Injectable()
 export class SharesService {
@@ -18,6 +18,8 @@ export class SharesService {
     private readonly shareRepo: Repository<FileShare>,
     @InjectRepository(File)
     private readonly fileRepo: Repository<File>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly logsService: LogsService,
   ) {}
 
@@ -27,7 +29,7 @@ export class SharesService {
   async shareFile(
     fileId: string,
     sharedByUserId: string,
-    sharedWithUserId: string,
+    sharedWithEmail: string,
     permission: 'read' | 'write' | 'comment',
   ) {
     const file = await this.fileRepo.findOne({ where: { id: fileId } });
@@ -35,25 +37,33 @@ export class SharesService {
     if (file.owner_id !== sharedByUserId)
       throw new ForbiddenException('You can only share your own files');
 
+    const targetUser = await this.userRepo.findOne({
+      where: { email: sharedWithEmail },
+      select: { id: true, email: true },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('No user found with that email');
+    }
+
     let contextRole = 'viewer';
-    if (permission === 'write' || permission === 'comment')
-      contextRole = 'collaborator';
+    if (permission === 'write' || permission === 'comment') contextRole = 'collaborator';
 
     const share = this.shareRepo.create({
       file_id: fileId,
       shared_by_user_id: sharedByUserId,
-      shared_with_user_id: sharedWithUserId,
+      shared_with_user_id: targetUser.id, // UUID ✅
       permission,
       context_role: contextRole,
     });
 
     const savedShare = await this.shareRepo.save(share);
 
-    // Log share creation
     await this.logsService.logAction(sharedByUserId, LogAction.SHARE_CREATE, {
       fileId,
       details: {
-        sharedWithUserId,
+        sharedWithEmail,
+        sharedWithUserId: targetUser.id,
         permission,
         contextRole,
       },
@@ -78,7 +88,11 @@ export class SharesService {
   /**
    * Update an existing share (change permission or context)
    */
-  async updateShare(shareId: string, updates: Partial<FileShare>, userId: string) {
+  async updateShare(
+    shareId: string,
+    updates: Partial<FileShare>,
+    userId: string,
+  ) {
     const share = await this.shareRepo.findOne({ where: { id: shareId } });
     if (!share) throw new NotFoundException('Share not found');
     if (share.shared_by_user_id !== userId)
@@ -124,7 +138,11 @@ export class SharesService {
   /**
    * Add a collaborator to a file (for teams or shared projects)
    */
-  async addCollaborator(fileId: string, addedByUserId: string, collaboratorId: string) {
+  async addCollaborator(
+    fileId: string,
+    addedByUserId: string,
+    collaboratorId: string,
+  ) {
     const file = await this.fileRepo.findOne({ where: { id: fileId } });
     if (!file) throw new NotFoundException('File not found');
 

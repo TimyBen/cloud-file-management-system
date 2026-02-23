@@ -248,3 +248,17 @@ if (browser) {
     if (q.trim()) performSearchDebounced(q, 100);
   });
 }
+// src/lib/stores/search.ts
+
+export function formatFileSize(bytes: number | string | null | undefined): string {
+  if (bytes === null || bytes === undefined) return '0 B';
+  const n = typeof bytes === 'string' ? Number.parseInt(bytes, 10) : bytes;
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(n) / Math.log(k));
+  const num = n / Math.pow(k, i);
+
+  return `${num.toFixed(num >= 10 || i === 0 ? 0 : 1)} ${sizes[i]}`;
+}

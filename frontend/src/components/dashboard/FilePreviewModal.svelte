@@ -70,6 +70,12 @@
     renaming = false;
     shareMessage = '';
     sharing = false;
+
+    // share popup reset
+    sharePopupOpen = false;
+    shareTo = '';
+    sharePermission = 'read';
+    shareNote = '';
   }
 
   // ─────────── Actions ───────────
@@ -107,36 +113,62 @@
       alert('Could not download file.');
     }
   }
-  
+
   // ─────────── Share ───────────
   let shareMessage = '';
   let sharing = false;
 
-  const buildShareUrl = () => {
-    const origin = browser ? window.location.origin : apiBase;
-    return `${origin}/share/${encodeURIComponent(file.id)}`;
+  // mini popup state
+  let sharePopupOpen = false;
+  let shareTo = ''; // username/email/userId
+  let sharePermission: 'read' | 'write' = 'read';
+  let shareNote = '';
+
+  const openSharePopup = () => {
+    shareMessage = '';
+    shareTo = '';
+    sharePermission = 'read';
+    shareNote = '';
+    sharePopupOpen = true;
+    // focus handled in markup with autofocus
   };
 
-  const handleShare = async () => {
-    if (!file) return;
-    sharing = true;
-    shareMessage = '';
+  const closeSharePopup = () => {
+    sharePopupOpen = false;
+  };
 
-    const url = buildShareUrl();
+  const submitShare = async () => {
+    if (!file) return;
+
+    const to = (shareTo || '').trim();
+    if (!to) {
+      shareNote = 'Please enter a username or email.';
+      return;
+    }
+
+    sharing = true;
+    shareNote = '';
 
     try {
-      if (browser && navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-        shareMessage = 'Link copied to clipboard';
-      } else {
-        shareMessage = url;
-      }
-      dispatch('share', { file, url });
-    } catch {
-      shareMessage = url;
+      dispatch('share', {
+        file,
+        sharedWithEmail: to, // pass what the user typed (email/username) to parent
+        permission: sharePermission
+      });
+
+      shareMessage = `Shared with ${to} (${sharePermission}).`;
+      sharePopupOpen = false;
+    } catch (e) {
+      console.error(e);
+      shareNote = 'Could not start sharing. Try again.';
     } finally {
       sharing = false;
     }
+  };
+
+  const onSharePopupKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') closeSharePopup();
+    if (e.key === 'Enter') submitShare();
   };
 
   // ─────────── Rename ───────────
@@ -230,10 +262,10 @@
           <button
             type="button"
             class="rounded-full border border-slate-700 px-3 py-1.5 text-[0.7rem] text-slate-100 disabled:opacity-60"
-            on:click|stopPropagation={handleShare}
+            on:click|stopPropagation={openSharePopup}
             disabled={sharing}
           >
-            {sharing ? 'Copying…' : 'Share link'}
+            Share
           </button>
 
           {#if !renaming}
@@ -302,6 +334,108 @@
           <p class="text-sm text-slate-400">No preview URL.</p>
         {/if}
       </div>
+
+      <!-- Mini Share Popup -->
+      {#if sharePopupOpen}
+        <div
+          class="absolute inset-0 z-10 flex items-center justify-center"
+          on:click|self={closeSharePopup}
+        >
+          <div class="share-pop rounded-2xl border border-slate-800 bg-slate-950/95 shadow-2xl w-[92%] max-w-md p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-slate-50">Share file</p>
+                <p class="mt-0.5 text-[0.7rem] text-slate-400 truncate">{fileName}</p>
+              </div>
+              <button
+                type="button"
+                class="rounded-md border border-slate-700 px-2 py-1 text-[0.7rem] text-slate-200"
+                on:click={closeSharePopup}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="mt-3 space-y-2" on:keydown={onSharePopupKey}>
+              <label class="block">
+                <span class="block text-[0.7rem] text-slate-400 mb-1">Username or email</span>
+                <input
+                  class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-cyan-600/40"
+                  placeholder="e.g. john@example.com"
+                  bind:value={shareTo}
+                  autofocus
+                />
+              </label>
+
+              <div class="grid grid-cols-2 gap-2">
+                <label class="block">
+                  <span class="block text-[0.7rem] text-slate-400 mb-1">Permission</span>
+                  <select
+                    class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-cyan-600/40"
+                    bind:value={sharePermission}
+                  >
+                    <option value="read">Read</option>
+                    <option value="write">Write</option>
+                  </select>
+                </label>
+
+                <label class="block">
+                  <span class="block text-[0.7rem] text-slate-400 mb-1">Message (optional)</span>
+                  <input
+                    class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-cyan-600/40"
+                    placeholder="Add a note"
+                    bind:value={shareNote}
+                  />
+                </label>
+              </div>
+
+              {#if shareNote && shareNote.startsWith('Please')}
+                <p class="text-[0.7rem] text-red-300">{shareNote}</p>
+              {/if}
+
+              <div class="mt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  class="rounded-md border border-slate-700 px-3 py-2 text-xs text-slate-200"
+                  on:click={closeSharePopup}
+                  disabled={sharing}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="rounded-md bg-cyan-600 px-3 py-2 text-xs text-white disabled:opacity-60"
+                  on:click={submitShare}
+                  disabled={sharing}
+                >
+                  {sharing ? 'Sharing…' : 'Share'}
+                </button>
+              </div>
+
+              <p class="mt-2 text-[0.65rem] text-slate-500">
+                Tip: Press Enter to share, Esc to close.
+              </p>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
+
+<style>
+  .share-pop {
+    animation: popIn 160ms ease-out;
+  }
+
+  @keyframes popIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+</style>

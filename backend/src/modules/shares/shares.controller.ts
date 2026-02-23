@@ -27,17 +27,20 @@ export class SharesController {
     @Body()
     body: {
       fileId: string;
-      sharedWithUserId: string;
+      sharedWithEmail: string;
       permission: 'read' | 'write' | 'comment';
     },
   ) {
     const userId = req.user?.sub;
-    if (!userId) throw new UnauthorizedException('User not found');
+    const email = req.user?.email;
 
-    return await this.sharesService.shareFile(
+    if (!userId) throw new UnauthorizedException('User not found');
+    if (!email) throw new UnauthorizedException('User email not found');
+
+    return this.sharesService.shareFile(
       body.fileId,
       userId,
-      body.sharedWithUserId,
+      body.sharedWithEmail,
       body.permission,
     );
   }
@@ -73,7 +76,11 @@ export class SharesController {
   ) {
     const userId = req.user?.sub;
     if (!userId) throw new UnauthorizedException('User not found');
-    return await this.sharesService.addCollaborator(fileId, userId, collaboratorId);
+    return await this.sharesService.addCollaborator(
+      fileId,
+      userId,
+      collaboratorId,
+    );
   }
 
   @Delete(':shareId/collaborators')
